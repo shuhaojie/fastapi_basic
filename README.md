@@ -203,7 +203,7 @@ async def get_db():
   - 第二层：创建异步数据库会话，可以先简单理解为这里由于要做I/O操作，因此需要async来修饰
   - 最后的yield：yield和return不同之处在于，它使用于需要打开资源（如数据库连接），然后用完后进行清理（关闭连接、释放资源）
 
-（2）`main.py`：同前面说的，要使用异步，必须全程都使用异步，不能有一处是同步的，这里
+（2）`main.py`：同前面说的，要使用异步，必须全程都使用异步，不能有一处是同步的，这里也要改为异步
 
 ```python
 # main.py
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     uvicorn.run(app='main:app', host='0.0.0.0', port=8000, workers=1, reload=True)
 ```
 
-- `users/views.py`：定义users的视图函数
+- `users/views.py`：同上
 
 ```python
 import time
@@ -250,7 +250,7 @@ async def read_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 ```
 
-- `users/crud.py`：定义users的crud操作
+- `users/crud.py`：这里需要注意的是，在异步里做查询需要用`select`，而不能是之前的`query`
 
 ```python
 # crud.py
@@ -404,6 +404,7 @@ alembic upgrade head
 
 ```python
 import threading
+
 @router.get("/async-data")
 async def get_async_data():
     print(f"Handling async request in thread: {threading.get_ident()}")
@@ -473,4 +474,6 @@ async def upload_file(file: UploadFile):
             await buffer.write(content)
     return {"filename": file.filename}
 ```
+
+## 5. 使用日志
 

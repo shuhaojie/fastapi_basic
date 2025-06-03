@@ -5,12 +5,14 @@ from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.users import schemas, crud
 from app.db import get_db
+from app.log import logger
 
 router = APIRouter()
 
 
 @router.post("/users/", response_model=schemas.UserRead)
 async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
+    logger.info(f"user name:{user.name}")
     return await crud.create_user(db=db, user=user)
 
 

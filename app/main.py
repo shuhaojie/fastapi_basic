@@ -3,12 +3,18 @@ import uvicorn
 from fastapi import FastAPI
 from db import engine, Base
 from app.users.views import router as users_router
+from app.log import log_init
+
 app = FastAPI()
 
 
 # 在启动时建表
 @app.on_event("startup")
 async def startup():
+    # 初始化日志
+    log_init()
+
+    # 初始化数据库
     async with engine.begin() as conn:
         # 注意这个是run_sync
         await conn.run_sync(Base.metadata.create_all)
