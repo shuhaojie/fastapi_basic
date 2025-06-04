@@ -9,6 +9,7 @@ from app.security import (
     get_current_user,
 )
 from app.db import get_db
+from app.log import logger
 from app.auth.schemas import UserLogin, UserRegister
 from app.auth.crud import user_exist, create_user
 
@@ -19,6 +20,7 @@ router = APIRouter()
 async def login_for_access_token(form_data: UserLogin, db: AsyncSession = Depends(get_db)):
     """登录获取访问令牌和刷新令牌"""
     # 在实际应用中，这里应该查询数据库验证用户
+    logger.info(f"form_data:{form_data}")
     user = await user_exist(db=db, username=form_data.username)
     if not user:
         raise HTTPException(

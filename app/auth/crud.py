@@ -1,5 +1,5 @@
 from typing import cast
-from sqlalchemy import select
+from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.models import AuthUser
 from app.security import get_password_hash
