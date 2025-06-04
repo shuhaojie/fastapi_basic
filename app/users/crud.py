@@ -1,12 +1,12 @@
 # crud.py
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.users import models
-from app.users import schemas
+from app.users.models import User
+from app.users.schemas import UserCreate
 
 
-async def create_user(db: AsyncSession, user: schemas.UserCreate):
-    db_user = models.User(name=user.name, email=user.email)
+async def create_user(db: AsyncSession, user: UserCreate):
+    db_user = User(username=user.username, email=user.email)
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
@@ -14,5 +14,5 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
 
 
 async def get_users(db: AsyncSession):
-    result = await db.execute(select(models.User))
+    result = await db.execute(select(User))
     return result.scalars().all()

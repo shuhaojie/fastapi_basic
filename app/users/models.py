@@ -1,11 +1,10 @@
 # models.py
-from sqlalchemy import Column, Integer, String
-from app.db import Base
+from sqlalchemy import Column, String
+from app.base import ORMBaseModel
 
 
-class User(Base):
+class User(ORMBaseModel):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50))
-    email = Column(String(100), unique=True, index=True)
+    username = Column(String(100))
+    email = Column(String(100))

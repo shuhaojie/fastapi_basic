@@ -18,6 +18,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+from app.users import models  # noqa
+from app.auth import models  # noqa
 
 target_metadata = Base.metadata
 print("Detected tables in metadata:", list(target_metadata.tables.keys()))

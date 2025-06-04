@@ -10,13 +10,13 @@ from app.log import logger
 router = APIRouter()
 
 
-@router.post("/users/", response_model=schemas.UserRead)
+@router.post("/add_user/", response_model=schemas.UserRead)
 async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
-    logger.info(f"user name:{user.name}")
+    logger.info(f"user name:{user.username}")
     return await crud.create_user(db=db, user=user)
 
 
-@router.get("/users/", response_model=list[schemas.UserRead])
+@router.get("/get_users/", response_model=list[schemas.UserRead])
 async def read_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 

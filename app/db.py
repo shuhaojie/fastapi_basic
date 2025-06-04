@@ -10,8 +10,6 @@ AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_
 
 Base = declarative_base()
 
-from app.users import models  # noqa
-
 
 async def get_db():
     async with AsyncSessionLocal() as session:
