@@ -1,7 +1,7 @@
 # main.py
 import uvicorn
 from fastapi import FastAPI
-from db import engine, Base
+from app.db import engine, Base
 from app.users.views import router as users_router
 from app.auth.views import router as auth_router
 from app.log import log_init

@@ -1,3 +1,4 @@
+from typing import cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.models import AuthUser
@@ -5,7 +6,9 @@ from app.security import get_password_hash
 
 
 async def user_exist(db: AsyncSession, username: str):
-    result = await db.execute(select(AuthUser).where(AuthUser.username==username))
+    # 这里有个pycharm报错, 非常烦人, 解决: https://stackoverflow.com/a/76862768/10844937
+    stmt = select(AuthUser).where(cast("ColumnElement[bool]", AuthUser.username == username))
+    result = await db.execute(stmt)
     return result.scalars().first()
 
 

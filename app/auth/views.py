@@ -1,10 +1,12 @@
 from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.log import logger
 from app.security import (
     create_access_token,
     create_refresh_token,
     verify_password,
+    get_current_user,
 )
 from app.db import get_db
 from app.auth.schemas import UserLogin, UserRegister
@@ -75,3 +77,9 @@ async def register_user(user_data: UserRegister, db: AsyncSession = Depends(get_
         "user_id": user.id,
         "username": user.username
     }
+
+
+@router.get("/protected")
+async def protected_route(current_user: dict = Depends(get_current_user)):
+    logger.info(current_user)
+    return {"msg": f"Hello {current_user['username']}!"}
