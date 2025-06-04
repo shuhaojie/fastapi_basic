@@ -13,7 +13,6 @@ log_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def log_init():
     logger.setLevel(level=logging.INFO)
-    request_log.setLevel(level=logging.INFO)
     formatter = logging.Formatter(
         '进程ID:%(process)d - '
         '线程ID:%(thread)d- '
@@ -23,16 +22,8 @@ def log_init():
         '日志信息:%(message)s'
     )
     logger.handlers.clear()
-    request_log.handlers.clear()
     # 设置api log存储
     api_handler = handlers.TimedRotatingFileHandler(os.path.join(log_dir, "logs/api.log"), encoding='utf-8', when='W6')
     api_handler.setLevel(level=logging.INFO)
     api_handler.setFormatter(formatter)
     logger.addHandler(api_handler)
-
-    # 设置request log存储
-    request_handler = handlers.TimedRotatingFileHandler(os.path.join(log_dir, "logs/request.log"), encoding='utf-8',
-                                                        when='W6')
-    request_handler.setLevel(level=logging.INFO)
-    request_handler.setFormatter(formatter)
-    request_log.addHandler(request_handler)

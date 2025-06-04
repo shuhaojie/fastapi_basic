@@ -475,3 +475,74 @@ async def upload_file(file: UploadFile):
 
 ## 5. 使用日志
 
+使用之前的方案，在启动fastapi框架时，去初始化日志
+
+```python
+@app.on_event("startup")
+async def startup():
+    # 初始化日志
+    log_init()
+```
+
+定义日志的方法如下：
+
+```python
+def log_init():
+    logger.setLevel(level=logging.INFO)
+    formatter = logging.Formatter(
+        '进程ID:%(process)d - '
+        '线程ID:%(thread)d- '
+        '日志时间:%(asctime)s - '
+        '代码路径:%(pathname)s:%(lineno)d - '
+        '日志等级:%(levelname)s - '
+        '日志信息:%(message)s'
+    )
+    logger.handlers.clear()
+    # 设置api log存储
+    api_handler = handlers.TimedRotatingFileHandler(os.path.join(log_dir, "logs/api.log"), encoding='utf-8', when='W6')
+    api_handler.setLevel(level=logging.INFO)
+    api_handler.setFormatter(formatter)
+    logger.addHandler(api_handler)
+```
+
+## 6. 权限认证
+
+FastAPI的权限认证没有Django封装得那么好，它的方法参考
+
+```python
+@router.get("/protected")
+async def protected_route(current_user: dict = Depends(get_current_user)):
+    logger.info(current_user)
+    return {"msg": f"Hello {current_user['username']}!"}
+```
+
+这里`Depends`的作用：FastAPI 会**先执行** `get_current_user()` 函数，而不是直接执行 `protected_route`，如果 `get_current_user()` 成功返回用户数据（如 `{"id": 1, "username": "john"}`），这个返回值会被自动赋值给 `current_user` 参数，然后路由函数才继续执行。
+
+这里的`get_current_user`是用来校验token是否合法的
+
+```python
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """获取当前认证用户"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        token_type: str = payload.get("type")
+
+        if username is None or token_type != "access":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    # 在实际应用中，这里应该查询数据库获取用户信息
+    # 示例中简化处理
+    user = {"username": username}
+    if not user:
+        raise credentials_exception
+    return user
+```
+
