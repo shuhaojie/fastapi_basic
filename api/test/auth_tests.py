@@ -1,8 +1,7 @@
-# tests/test_protected_route.py
-import pytest
+# test/test_protected_route.py
 from fastapi.testclient import TestClient
-from app.main import app
-from app.log import logger
+from run import app
+from api.utils.logger import logger
 
 client = TestClient(app)
 

@@ -1,3 +1,57 @@
+### 1. alembic如何做数据库迁移？
+
+使用alembic迁移，和使用django迁移一样，**并不要求我们启动框架**
+
+#### （1）环境安装
+
+```bash
+pip install alembic  # 安装 Alembic
+alembic init alembic  # 初始化 Alembic
+```
+
+这一步之后，路径下会生成一个`alembic.ini`文件，和一个`alembic`文件夹
+
+#### （2）文件配置
+
+- 修改`.ini`文件，只需要改下面一个配置即可
+
+```ini
+# 修改数据库连接, 注意这里如果是异步，也需要使用pymysql!!!
+sqlalchemy.url = mysql+pymysql://root:root@localhost:3306/fastapi_basic
+```
+
+- 修改`alembic`文件夹的`env.py`
+
+```python
+# add your model's MetaData object here
+# for 'autogenerate' support
+from api.app.base.models import Base
+from api.app.user.models import User
+target_metadata = Base.metadata
+```
+
+#### （3）执行迁移
+
+由于我的ini文件在api下，因此执行迁移需要加如下内容
+
+```bash
+alembic -c api/alembic.ini revision --autogenerate -m "Create user table"
+```
+
+应用到数据库
+
+```bash
+alembic -c api/alembic.ini upgrade head
+```
+
+
+
+```
+以下是老文档，留着备份使用的
+```
+
+------------------
+
 ## 1. 环境准备
 
 > 1. fastapi对python版本要求较高，一些旧的版本可能会有问题，这里使用的是Python3.10.9
@@ -40,24 +94,25 @@ def read_root():
 - `main.py`：启动框架，连接路由，建立数据库连接
 
 ```python
-# main.py
+# run.py
 import uvicorn
 from fastapi import FastAPI
 from db import engine, Base
-from app.users.views import router as users_router
+from api.users.views import router as users_router
+
 app = FastAPI()
 
 
 # 在启动时建表
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)
+  Base.metadata.create_all(bind=engine)
 
 
 app.include_router(users_router)
 
 if __name__ == '__main__':
-    uvicorn.run(app='main:app', host='0.0.0.0', port=8000, workers=20, reload=True)
+  uvicorn.run(app='main:api', host='0.0.0.0', port=8000, workers=20, reload=True)
 ```
 
 - `db.py`：定义数据库连接
@@ -89,20 +144,21 @@ def get_db():
 ```python
 from fastapi import Depends, APIRouter
 from sqlalchemy.orm import Session
-from app.users import schemas, crud
-from app.db import get_db
+from api.users import crud
+from api.app.users import schemas
+from api.db import get_db
 
 router = APIRouter()
 
 
 @router.post("/users/", response_model=schemas.UserRead)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    return crud.create_user(db=db, user=user)
+  return crud.create_user(db=db, user=user)
 
 
 @router.get("/users/", response_model=list[schemas.UserRead])
 def read_users(db: Session = Depends(get_db)):
-    return crud.get_users(db)
+  return crud.get_users(db)
 ```
 
 - `users/models.py`：定义users里的数据表
@@ -110,15 +166,15 @@ def read_users(db: Session = Depends(get_db)):
 ```python
 # models.py
 from sqlalchemy import Column, Integer, String
-from app.db import Base
+from api.db import Base
 
 
 class User(Base):
-    __tablename__ = "users"
+  __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50))
-    email = Column(String(100), unique=True, index=True)
+  id = Column(Integer, primary_key=True, index=True)
+  name = Column(String(50))
+  email = Column(String(100), unique=True, index=True)
 ```
 
 - `users/crud.py`：定义users的crud操作
@@ -126,8 +182,8 @@ class User(Base):
 ```bash
 # crud.py
 from sqlalchemy.orm import Session
-from app.users import models
-from app.users import schemas
+from api.users import models
+from api.users import schemas
 
 
 def create_user(db: Session, user: schemas.UserCreate):
@@ -180,12 +236,12 @@ AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_
 
 Base = declarative_base()
 
-from app.users import models  # noqa
+from api.users import models  # noqa
 
 
 async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+  async with AsyncSessionLocal() as session:
+    yield session
 ```
 
 - DBAPI由`pymysql`变成了`asyncmy`
@@ -204,25 +260,26 @@ async def get_db():
 （2）`main.py`：同前面说的，要使用异步，必须全程都使用异步，不能有一处是同步的，这里也要改为异步
 
 ```python
-# main.py
+# run.py
 import uvicorn
 from fastapi import FastAPI
 from db import engine, Base
-from app.users.views import router as users_router
+from api.users.views import router as users_router
+
 app = FastAPI()
 
 
 # 在启动时建表
 @app.on_event("startup")
 async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+  async with engine.begin() as conn:
+    await conn.run_sync(Base.metadata.create_all)
 
 
 app.include_router(users_router)
 
 if __name__ == '__main__':
-    uvicorn.run(app='main:app', host='0.0.0.0', port=8000, workers=1, reload=True)
+  uvicorn.run(app='main:api', host='0.0.0.0', port=8000, workers=1, reload=True)
 ```
 
 - `users/views.py`：同上
@@ -233,19 +290,21 @@ import asyncio
 import threading
 from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.users import schemas, crud
-from app.db import get_db
+from api.users import crud
+from api.app.users import schemas
+from api.db import get_db
 
 router = APIRouter()
 
+
 @router.post("/users/", response_model=schemas.UserRead)
 async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
-    return await crud.create_user(db=db, user=user)  # 要使用async+await
+  return await crud.create_user(db=db, user=user)  # 要使用async+await
 
 
 @router.get("/users/", response_model=list[schemas.UserRead])
 async def read_users(db: AsyncSession = Depends(get_db)):
-    return await crud.get_users(db)
+  return await crud.get_users(db)
 ```
 
 - `users/crud.py`：这里需要注意的是，在异步里做查询需要用`select`，而不能是之前的`query`
@@ -254,21 +313,21 @@ async def read_users(db: AsyncSession = Depends(get_db)):
 # crud.py
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.users import models
-from app.users import schemas
+from api.users import models
+from api.app.users import schemas
 
 
 async def create_user(db: AsyncSession, user: schemas.UserCreate):
-    db_user = models.User(name=user.name, email=user.email)
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
+  db_user = models.User(name=user.name, email=user.email)
+  db.add(db_user)
+  await db.commit()
+  await db.refresh(db_user)
+  return db_user
 
 
 async def get_users(db: AsyncSession):
-    result = await db.execute(select(models.User))
-    return result.scalars().all()
+  result = await db.execute(select(models.User))
+  return result.scalars().all()
 ```
 
 ## 3. fastapi使用mysql
@@ -337,7 +396,7 @@ Base = declarative_base()
 使用的是alembic来做迁移，这里注意要在`db.py`导入模型，不然迁移的时候找不到
 
 ```python
-from app.users import models  # noqa
+from api.users import models  # noqa
 ```
 
 生成迁移文件
@@ -425,7 +484,7 @@ def get_sync_data():
 
 在上面的例子中，有一个非常重要的点，异步里所有**打印的线程id都一样**，这是为什么呢？为什么不使用多线程+协程的形式呢？这就是异步编程模型的核心原理，**Python 的异步编程基于单线程事件循环，所有协程都在同一个主线程中执行**，遇到await时，当前协程暂停，事件循环选择另一个就绪的协程继续执行，所有协程在同一个线程中交替执行。
 
-![image-20250603164944674](./assets/image-20250603164944674.png)
+![image-20250603164944674](docs/image-20250603164944674.png)
 
 为什么使用单线程模型？
 
@@ -545,4 +604,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 ```
+
+## 7. 用户集成
 
