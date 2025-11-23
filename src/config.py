@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     PORT: int = 8000
     LOG_LEVEL: str = "info"
 
+    SECRET_KEY: str = "Q1w2e3r4"  # 请使用强密钥
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
     # 数据库连接信息
     MYSQL_HOST: str = "localhost"
     MYSQL_PORT: int = 3306

@@ -1,7 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field, validator, field_validator
+from pydantic import BaseModel, Field, field_validator
 from src.config import settings
-from src.features.auth.models import User
-from datetime import datetime
+from src.core.base.schema import BaseSchema
 
 
 class EmailSchema(BaseModel):
@@ -33,3 +32,18 @@ class RegisterInputSchema(BaseModel):
         if data["username"] in settings.SUPER_USER_LIST:
             data["is_superuser"] = True
         return data
+
+
+class LoginInputSchema(BaseModel):
+    username: str = Field(..., min_length=3, max_length=32, description="用户名")
+    password: str = Field(..., min_length=5, description="密码")
+
+
+class LoginData(BaseModel):
+    refresh: str = Field(..., description="刷新令牌")
+    access: str = Field(..., description="访问令牌")
+    is_admin: bool = Field(..., description="是否为管理员")
+
+
+class LoginOutputSchema(BaseSchema):
+    data: LoginData

@@ -1,14 +1,14 @@
-# src/features/auth/router.py
-from sqlalchemy import select
 from fastapi import APIRouter, status
+from datetime import timedelta
 from src.dependencies import DbSession
+from src.config import settings
 from src.core.base.response import BaseResponse
 from src.core.base.schema import BaseSchema
-from src.core.utils.security import get_password_hash
 from src.core.utils.logger import logger
+from src.core.utils.security import create_access_token, create_refresh_token
 from src.features.auth.models import User
 from src.features.auth.service import auth_service
-from src.features.auth.schema import RegisterInputSchema, EmailSchema
+from src.features.auth.schema import RegisterInputSchema, EmailSchema, LoginInputSchema, LoginOutputSchema, LoginData
 from src.features.auth.utils import email_verify
 
 router = APIRouter()
@@ -23,8 +23,7 @@ router = APIRouter()
 async def send_code(email_schema: EmailSchema, db: DbSession):
     try:
         # 检查邮箱是否已存在
-        result = await db.execute(select(User).where(User.email == email_schema.email))
-        if result.scalar_one_or_none():
+        if not auth_service.check_email_exists(db, email_schema.email):
             return BaseResponse.error(message="邮箱已注册")
         # 生成验证码
         code = email_verify.generate_code()
@@ -40,7 +39,7 @@ async def send_code(email_schema: EmailSchema, db: DbSession):
             return BaseResponse.error(message="邮件发送失败")
     except Exception as e:
         logger.exception(e)
-        return BaseResponse.error(message=str(e))
+        return BaseResponse.server_error(message=str(e))
 
 
 @router.post("/register",
@@ -69,11 +68,53 @@ async def register(payload: RegisterInputSchema, db: DbSession):
     except Exception as e:
         logger.exception(e)
         await db.rollback()
-        return BaseResponse.error(code=500, message="服务器内部错误")
+        return BaseResponse.server_error(message=str(e))
     return BaseResponse.created(message="注册成功")
 
 
-@router.post("/login")
-async def login(db: DbSession):
+@router.post("/login",
+             response_model=LoginOutputSchema,
+             status_code=status.HTTP_200_OK,
+             summary="用户登录",
+             description="用户登录", )
+async def login(payload: LoginInputSchema, db: DbSession):
     # db 自动注入
-    return {"msg": "login success"}
+    try:
+        user = await auth_service.get_user_by_account(db, payload.username)
+        if not user:
+            return BaseResponse.error("用户不存在")
+        if not user.check_password(payload.password):
+            return BaseResponse.error("密码错误")
+
+        # 2. 准备 token 数据
+        token_data = {
+            "sub": str(user.id),  # 用户ID作为主题
+            "username": user.username,
+            "email": user.email,
+            "is_superuser": user.is_superuser
+        }
+
+        # 3. 生成 access_token (短期令牌)
+        access_token_expires = timedelta(days=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=access_token_expires
+        )
+
+        # 4. 生成 refresh_token (长期令牌，用于获取新的 access_token)
+        refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        refresh_token = create_refresh_token(
+            data=token_data,
+            expires_delta=refresh_token_expires
+        )
+    except Exception as e:
+        logger.exception(e)
+        return BaseResponse.server_error(message=str(e))
+    return BaseResponse.success(
+        message="登录成功",
+        data=LoginData(
+            refresh=refresh_token,
+            access=access_token,
+            is_admin=user.is_superuser
+        )
+    )
