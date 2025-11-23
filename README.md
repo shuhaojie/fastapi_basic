@@ -102,6 +102,8 @@ alembic -c api/alembic.ini revision --autogenerate -m "Create user table"
 alembic -c api/alembic.ini upgrade head
 ```
 
+### 3. fastapi如何使用cache
+
 
 
 ```

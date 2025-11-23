@@ -25,8 +25,17 @@ class Settings(BaseSettings):
     EMAIL_PORT: int = 465
     EMAIL_USE_SSL: bool = True
     EMAIL_HOST_USER: str = "2386677465@qq.com"
-    EMAIL_HOST_PASSWORD: str ="gdmaomlmoxohdjci"  # 邮箱授权码，不是密码
-    VERIFICATION_CODE_EXPIRE: int = 300 # 验证码有效期
+    EMAIL_HOST_PASSWORD: str = "gdmaomlmoxohdjci"  # 邮箱授权码，不是密码
+    VERIFICATION_CODE_EXPIRE: int = 300  # 验证码有效期
+
+    # REDIS连接信息
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWD: str = "foobared"
+    REDIS_DB: int = 1
+
+    # 超管信息
+    SUPER_USER_LIST: list = ["haojie"]
 
     class Config:
         env_file = ".env"
