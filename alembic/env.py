@@ -1,5 +1,5 @@
 import os
-from api.utils.logger import logger
+from src.core.utils.logger import logger
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -19,8 +19,8 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 
-from api.app.base.models import Base
-from api.app.user.models import User
+from src.core.base.models import Base
+from src.features.auth.models import User
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

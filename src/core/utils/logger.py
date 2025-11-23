@@ -1,6 +1,6 @@
 import os
 import logging
-from env import BASE_DIR
+from src.config import BASE_DIR
 
 
 def setup_logger():
@@ -22,7 +22,7 @@ def setup_logger():
         _logger.addHandler(console_handler)
 
     # === 文件输出 ===
-    log_dir = os.path.join(BASE_DIR, "app/logs")
+    log_dir = os.path.join(BASE_DIR, "logs")
     os.makedirs(log_dir, exist_ok=True)
 
     log_file_path = os.path.join(log_dir, "app.log")

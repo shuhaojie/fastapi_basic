@@ -1,4 +1,62 @@
-### 1. alembic如何做数据库迁移？
+### 1. 如何组织项目结构
+
+从Django框架迁移到FastAPI框架，最苦恼的事情是FastAPI框架并没有Django startproject这个脚手架工具，因此它的项目结构的组织非常灵活、随意，项目时间长了，就会发现有些结构并不好。
+
+https://github.com/zhanymkanov/fastapi-best-practices 是git上一个star达到了10k以上的项目，里面的项目组织方式是这样的，可以借鉴
+
+```bash
+fastapi-project
+├── alembic/
+├── src
+│   ├── auth
+│   │   ├── router.py
+│   │   ├── schemas.py  # pydantic models
+│   │   ├── models.py  # db models
+│   │   ├── dependencies.py
+│   │   ├── config.py  # local configs
+│   │   ├── constants.py
+│   │   ├── exceptions.py
+│   │   ├── service.py
+│   │   └── utils.py
+│   ├── aws
+│   │   ├── client.py  # client model for external service communication
+│   │   ├── schemas.py
+│   │   ├── config.py
+│   │   ├── constants.py
+│   │   ├── exceptions.py
+│   │   └── utils.py
+│   └── posts
+│   │   ├── router.py
+│   │   ├── schemas.py
+│   │   ├── models.py
+│   │   ├── dependencies.py
+│   │   ├── constants.py
+│   │   ├── exceptions.py
+│   │   ├── service.py
+│   │   └── utils.py
+│   ├── config.py  # global configs
+│   ├── models.py  # global models
+│   ├── exceptions.py  # global exceptions
+│   ├── pagination.py  # global module e.g. pagination
+│   ├── database.py  # db connection related stuff
+│   └── main.py
+├── tests/
+│   ├── auth
+│   ├── aws
+│   └── posts
+├── templates/
+│   └── index.html
+├── requirements
+│   ├── base.txt
+│   ├── dev.txt
+│   └── prod.txt
+├── .env
+├── .gitignore
+├── logging.ini
+└── alembic.ini
+```
+
+### 2. alembic如何做数据库迁移？
 
 使用alembic迁移，和使用django迁移一样，**并不要求我们启动框架**
 
