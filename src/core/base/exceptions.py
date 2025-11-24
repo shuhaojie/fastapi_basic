@@ -42,7 +42,7 @@ async def internal_error_handler(request: Request, exc: Exception):
 # -------------------------
 def register_exception_handlers(app: FastAPI):
 
-    # 处理 FastAPI 内部产生的 HTTPException（包括 404）
+    # 由于注册了这个，那么所有 404、405、500（FastAPI 内部抛的）都会先走这里
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         if exc.status_code == 404:
@@ -58,7 +58,7 @@ def register_exception_handlers(app: FastAPI):
             }
         )
 
-    # 捕获所有未处理的异常（真正意义上的兜底）
+    # 如果上面的装饰器找不到，再查找父类异常Exception
     @app.exception_handler(Exception)
     async def all_exception_handler(request: Request, exc: Exception):
         return await internal_error_handler(request, exc)

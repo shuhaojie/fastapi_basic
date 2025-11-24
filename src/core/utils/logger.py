@@ -9,7 +9,9 @@ def setup_logger():
 
     # 日志格式
     formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(message)s"
+        "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - "
+        "PID:%(process)d - TID:%(thread)d - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     # 控制台输出

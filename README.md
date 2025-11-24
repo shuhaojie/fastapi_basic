@@ -102,13 +102,59 @@ alembic -c api/alembic.ini revision --autogenerate -m "Create user table"
 alembic -c api/alembic.ini upgrade head
 ```
 
-### 3. pydantic给fastapi干了啥？
+### 3. pydantic干了啥？
 
-### 4. 如何保证接口按照接口文档返回？
+### 4. 如何保证接口按照文档返回？
 
 如果不按照这个返回，就报错？
 
 ### 5. 如何给接口加上统一的权限
+
+```python
+def get_current_user(request: Request):
+    auth = request.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+        # 注意这里必须抛异常
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token无效或已过期")
+    token = auth.split(" ")[1]
+    try:
+        payload = validate_jwt_token(token)
+    except Exception as e:
+        logger.exception(e)
+        # 注意这里必须抛异常
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token无效或已过期")
+    return payload
+  
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    # 在这里验证 token
+    if not validate_jwt_token(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token无效或已过期",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return token
+  
+def login_required(payload=Depends(get_current_user)):
+    return payload
+
+@router.post("/email")
+async def send_code(email_schema: EmailSchema,
+                    db: DbSession,
+                    user=Depends(login_required),
+                    token=Depends(verify_token)):
+       pass
+```
+
+
+
+- 第一个depends：确保用户需要传token
+- 第二个depends：swagger前端页面上，会多一个东西
+
+![image-20251124104427050](./docs/image-20251124104427050.png)
+
+点进去的时候，只需要输入access_token值即可，不需要带前面的Bearer
 
 ### 6. 如何做异常兜底？
 
@@ -117,177 +163,40 @@ alembic -c api/alembic.ini upgrade head
 - 不用每个里面都写try..except
 - 如果是404，我知道是我的接口的404
 
-
-
-```
-以下是老文档，留着备份使用的
-```
-
-------------------
-
-## 1. 环境准备
-
-> 1. fastapi对python版本要求较高，一些旧的版本可能会有问题，这里使用的是Python3.10.9
-> 2. 不同版本的fastapi差异很大，这里的版本是fastapi==0.115.12
-
-- 安装fastapi: `pip install fastapi`
-- 安装uvicorn: `pip install uvicorn`
-- 编写一个最简单的脚本
-
 ```python
-from fastapi import FastAPI
+# 注册所有异常处理器
+def register_exception_handlers(app: FastAPI):
 
-app = FastAPI()
+    # 由于注册了这个，那么所有 404、405、500（FastAPI 内部抛的）都会先走这里
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        if exc.status_code == 404:
+            return await not_found_handler(request, exc)
+        # 对于其他 HTTPException，你如果想自定义，也可以统一处理
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "success": False,
+                "message": exc.detail,
+                "data": None,
+                "code": exc.status_code
+            }
+        )
 
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-```
-- 启动服务: `uvicorn main:app --reload`
-
-## 2. 框架结构
-
-### （1）整体结构
-
-```text
-.
-└── app
-    ├── db.py
-    ├── main.py
-    └── users
-        ├── crud.py
-        ├── models.py
-        ├── schemas.py
-        └── views.py
+    # 如果上面的装饰器找不到，再查找父类异常Exception
+    @app.exception_handler(Exception)
+    async def all_exception_handler(request: Request, exc: Exception):
+        return await internal_error_handler(request, exc)
 ```
 
-### （2）模块作用
-
-- `main.py`：启动框架，连接路由，建立数据库连接
-
-```python
-# run.py
-import uvicorn
-from fastapi import FastAPI
-from db import engine, Base
-from api.users.views import router as users_router
-
-app = FastAPI()
+### 7. Depends可以理解为装饰器吗？
 
 
-# 在启动时建表
-@app.on_event("startup")
-def startup():
-  Base.metadata.create_all(bind=engine)
 
 
-app.include_router(users_router)
 
-if __name__ == '__main__':
-  uvicorn.run(app='main:api', host='0.0.0.0', port=8000, workers=20, reload=True)
 ```
-
-- `db.py`：定义数据库连接
-
-```python
-# db.py
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-
-DATABASE_URL = "mysql+pymysql://root:805115148@localhost:3306/fastapi_basic"
-
-engine = create_engine(DATABASE_URL, echo=False)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-```
-
-- `users/views.py`：定义users的视图函数
-
-```python
-from fastapi import Depends, APIRouter
-from sqlalchemy.orm import Session
-from api.users import crud
-from api.app.users import schemas
-from api.db import get_db
-
-router = APIRouter()
-
-
-@router.post("/users/", response_model=schemas.UserRead)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-  return crud.create_user(db=db, user=user)
-
-
-@router.get("/users/", response_model=list[schemas.UserRead])
-def read_users(db: Session = Depends(get_db)):
-  return crud.get_users(db)
-```
-
-- `users/models.py`：定义users里的数据表
-
-```python
-# models.py
-from sqlalchemy import Column, Integer, String
-from api.db import Base
-
-
-class User(Base):
-  __tablename__ = "users"
-
-  id = Column(Integer, primary_key=True, index=True)
-  name = Column(String(50))
-  email = Column(String(100), unique=True, index=True)
-```
-
-- `users/crud.py`：定义users的crud操作
-
-```bash
-# crud.py
-from sqlalchemy.orm import Session
-from api.users import models
-from api.users import schemas
-
-
-def create_user(db: Session, user: schemas.UserCreate):
-    db_user = models.User(name=user.name, email=user.email)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
-
-
-def get_users(db: Session):
-    return db.query(models.User).all()
-```
-
-- `users/schemas`：对users的视图函数的输入输出定义数据格式
-
-```python
-# schemas.py
-from pydantic import BaseModel
-
-
-class UserCreate(BaseModel):
-    name: str
-    email: str
-
-
-class UserRead(UserCreate):
-    id: int
-
-    class Config:
-        orm_mode = True
+以下是老文档，留着备
 ```
 
 ### （3）异步版本(重点)

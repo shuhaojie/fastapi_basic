@@ -68,7 +68,7 @@ async def register(payload: RegisterInputSchema, db: DbSession):
              response_model=LoginOutputSchema,
              status_code=status.HTTP_200_OK,
              summary="用户登录",
-             description="用户登录", )
+             description="用户登录")
 async def login(payload: LoginInputSchema, db: DbSession):
     user = await auth_service.get_user_by_account(db, payload.username)
     if not user:
@@ -86,17 +86,12 @@ async def login(payload: LoginInputSchema, db: DbSession):
 
     # 3. 生成 access_token (短期令牌)
     access_token_expires = timedelta(days=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data=token_data,
-        expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
 
     # 4. 生成 refresh_token (长期令牌，用于获取新的 access_token)
     refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    refresh_token = create_refresh_token(
-        data=token_data,
-        expires_delta=refresh_token_expires
-    )
+    refresh_token = create_refresh_token(data=token_data, expires_delta=refresh_token_expires)
+
     return BaseResponse.success(
         message="登录成功",
         data=LoginData(
