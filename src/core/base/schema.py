@@ -11,4 +11,4 @@ class BaseSchema(BaseModel):
 
 
 class BaseResponseSchema(BaseSchema):
-    data: Dict[str, Any]
+    data: Any = None

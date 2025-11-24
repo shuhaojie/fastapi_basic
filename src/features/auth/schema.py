@@ -24,10 +24,7 @@ class RegisterInputSchema(BaseModel):
 
     # 移除 password_confirm，create 时不需要
     def get_cleaned_data(self):
-        data = self.dict()
-        data.pop("password_confirm")
-        data.pop("password")
-        data.pop("code")
+        data = self.model_dump(exclude={"password_confirm", "password", "code"})
         # 超级用户自动提升
         if data["username"] in settings.SUPER_USER_LIST:
             data["is_superuser"] = True

@@ -4,8 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.core.utils.logger import logger
 from src.config import settings
 from src.features.auth.router import router as auth_router
-# from src.features.projects.router import router as project_router
-# from src.features.documents.router import router as doc_router
+from src.core.base.exceptions import register_exception_handlers
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy.exc import IntegrityError
 
 app = FastAPI(
     debug=settings.DEBUG,
@@ -26,6 +28,9 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["认证"])
 # app.include_router(project_router, prefix="/api/v1/projects", tags=["项目"])
 # app.include_router(doc_router, prefix="/api/v1/docs", tags=["文档"])
+
+# 全局异常处理器注册（顺序很重要）
+register_exception_handlers(app)
 
 
 # === 事件钩子 ===

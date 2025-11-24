@@ -102,7 +102,20 @@ alembic -c api/alembic.ini revision --autogenerate -m "Create user table"
 alembic -c api/alembic.ini upgrade head
 ```
 
-### 3. fastapi如何使用cache
+### 3. pydantic给fastapi干了啥？
+
+### 4. 如何保证接口按照接口文档返回？
+
+如果不按照这个返回，就报错？
+
+### 5. 如何给接口加上统一的权限
+
+### 6. 如何做异常兜底？
+
+想实现的目的：
+
+- 不用每个里面都写try..except
+- 如果是404，我知道是我的接口的404
 
 
 
