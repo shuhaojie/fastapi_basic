@@ -1,10 +1,10 @@
 from fastapi import APIRouter, status, Depends
-from src.dependencies import DbSession
+from src.core.server.dependencies import DbSession
 from src.core.base.schema import BaseRequestSchema
 from src.core.base.response import BaseResponse
-from src.core.utils.pagination import paginate
-from src.core.utils.logger import logger
-from src.core.utils.security import verify_token, admin_required
+from src.common.utils.pagination import paginate
+from src.common.utils.logger import logger
+from src.common.utils.security import verify_token, admin_required
 from src.features.user.service import user_service
 from src.features.user.schema import UserListOutputSchema, UserListData
 

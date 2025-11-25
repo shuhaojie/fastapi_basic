@@ -1,9 +1,8 @@
+import traceback
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-import traceback
-
-from src.core.utils.logger import logger
+from src.common.utils.logger import logger
 
 
 def json_response(message: str, code: int, status: int):

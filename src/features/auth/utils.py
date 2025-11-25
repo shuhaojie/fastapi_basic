@@ -2,9 +2,9 @@ import random
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
-from src.core.utils.logger import logger
-from src.config import settings
-from src.dependencies import get_redis
+from src.common.utils.logger import logger
+from src.core.conf.config import settings
+from src.core.server.dependencies import get_redis
 
 
 class EmailVerification:

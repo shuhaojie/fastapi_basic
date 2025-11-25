@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.core.utils.logger import logger
-from src.config import settings
+from src.common.utils.logger import logger
+from src.core.conf.config import settings
 from src.features.auth.router import router as auth_router
 from src.features.user.router import router as user_router
 from src.core.base.exceptions import register_exception_handlers

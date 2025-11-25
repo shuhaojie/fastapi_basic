@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from src.config import settings
+from src.core.conf.config import settings
 from src.core.base.schema import BaseSchema
 
 

@@ -1,9 +1,9 @@
 from typing import Annotated
 import redis.asyncio as redis
-from src.config import settings
+from src.core.conf.config import settings
 from fastapi import Depends, HTTPException, Header, status
-from src.database import AsyncSession, get_db
-from src.core.utils.logger import logger
+from src.core.server.database import AsyncSession, get_db
+from src.common.utils.logger import logger
 
 # 数据库依赖（最常用）
 DbSession = Annotated[AsyncSession, Depends(get_db)]

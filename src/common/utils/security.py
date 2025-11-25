@@ -3,8 +3,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from datetime import datetime, timedelta
 from jose import jwt
 from typing import Optional
-from src.config import settings
-from src.core.utils.logger import logger
+from src.core.conf.config import settings
+from src.common.utils.logger import logger
 
 security = HTTPBearer()
 

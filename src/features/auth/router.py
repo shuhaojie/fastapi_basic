@@ -1,11 +1,11 @@
 from fastapi import APIRouter, status
 from datetime import timedelta
-from src.dependencies import DbSession
-from src.config import settings
+from src.core.server.dependencies import DbSession
+from src.core.conf.config import settings
 from src.core.base.response import BaseResponse
 from src.core.base.schema import BaseResponseSchema
-from src.core.utils.logger import logger
-from src.core.utils.security import create_access_token, create_refresh_token
+from src.common.utils.logger import logger
+from src.common.utils.security import create_access_token, create_refresh_token
 from src.features.auth.models import User
 from src.features.auth.service import auth_service
 from src.features.auth.schema import RegisterInputSchema, EmailSchema, LoginInputSchema, LoginOutputSchema, LoginData

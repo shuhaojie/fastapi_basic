@@ -1,5 +1,5 @@
 import os
-from src.core.utils.logger import logger
+from src.common.utils.logger import logger
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 
 from src.core.base.models import Base
-from src.features.auth.models import User
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
