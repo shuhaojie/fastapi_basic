@@ -24,5 +24,7 @@ async def user_list(db: DbSession,
                     ):
     logger.info(f"user:{user}")
     query = user_service.get_user_list(params.q)
-    data = await paginate(db, query, UserListData, params.page_num, params.page_size)
+    data = await paginate(db, query, params.page_num, params.page_size)
+    # 将数据库对象转为普通python格式
+    data["list"] = [UserListData.from_orm(item) for item in data["list"]]
     return BaseResponse.success(data=data)

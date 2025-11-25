@@ -2,24 +2,18 @@
 import math
 from fastapi import Query
 from sqlalchemy import select, func
-from typing import TypeVar
-
-T = TypeVar("T")
 
 
 async def paginate(
         db,
         query,
-        base_schema,
         page_num: int = Query(1, ge=1),
         page_size: int = Query(10, ge=1, le=200),
 
 ):
     """
-
     :param db: 查询db
     :param query: 查询语句
-    :param base_schema: 最小的数据库的字段定义schema
     :param page_num: 当前页码数
     :param page_size: 一页总条数
     :return:
@@ -34,11 +28,8 @@ async def paginate(
         query.offset((page_num - 1) * page_size).limit(page_size)
     )
     items = items.scalars().all()
-
-    user_list = [base_schema.from_orm(item) for item in items]
-
     return {
-        "list": user_list,
+        "list": items,
         "total": total_items,
         "total_pages": total_pages,
         "page_num": page_num,

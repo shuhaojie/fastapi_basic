@@ -193,6 +193,49 @@ def register_exception_handlers(app: FastAPI):
 
 ### 8. fastapi如何做分页？
 
+纯手写版，零依赖
+
+```
+import math
+from fastapi import Query
+from sqlalchemy import select, func
+
+
+async def paginate(
+        db,
+        query,
+        page_num: int = Query(1, ge=1),
+        page_size: int = Query(10, ge=1, le=200),
+
+):
+    """
+    :param db: 查询db
+    :param query: 查询语句
+    :param page_num: 当前页码数
+    :param page_size: 一页总条数
+    :return:
+    """
+    # 总数
+    count_query = select(func.count()).select_from(query.subquery())
+    total_items = (await db.execute(count_query)).scalar()
+    total_pages = math.ceil(total_items / page_size) if total_items else 0
+
+    # 数据
+    items = await db.execute(
+        query.offset((page_num - 1) * page_size).limit(page_size)
+    )
+    items = items.scalars().all()
+    return {
+        "list": items,
+        "total": total_items,
+        "total_pages": total_pages,
+        "page_num": page_num,
+        "page_size": page_size
+    }
+```
+
+
+
 ### 9. 如何使用sqlalchemy orm？
 
 注意下面这种形式就是orm
@@ -213,9 +256,44 @@ def register_exception_handlers(app: FastAPI):
 
 ### 10. 列表页如何只返回我要的字段？
 
-### 11. 如何把数据库字段直接返回为列表
+```python
+class UserListData(BaseModel):
+    username: str = Field(..., description="用户名")
+    email: str = Field(..., description="邮箱")
+    is_superuser: bool = Field(..., description="是否为管理员")
+    create_time: datetime = Field(..., description="注册时间")
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('create_time')
+    def serialize_create_time(self, create_time: datetime, _info):
+        """将 datetime 序列化为 ISO 格式字符串"""
+        return create_time.isoformat()
+```
+
+注意：
+
+- 这个字段名称需要和数据库保持一致，不然会报错，例如`is_superuser`不能是`is_admin`
+- 这里需要把`create_time`做序列化，不然无法返回
+
+### 11. 如何把数据库对象直接返回为列表
+
+```python
+    data = await paginate(db, query, params.page_num, params.page_size)
+    # 关键步骤，在上一步拿到的是数据库对象，使用这一步，可以把数据库对象转为普通python类型
+    data["list"] = [UserListData.from_orm(item) for item in data["list"]]
+```
 
 ### 12. get请求如何传query_params?
+
+```python
+# 这里一定要有后面的Depends()
+async def user_list(db: DbSession,
+                    params: BaseRequestSchema = Depends(),
+                    user=Depends(admin_required),
+                    token=Depends(verify_token)
+                    ):
+```
 
 
 
