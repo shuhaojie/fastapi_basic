@@ -67,6 +67,6 @@ def login_required(payload=Depends(get_current_user)):
 
 
 def admin_required(payload=Depends(get_current_user)):
-    if payload["role"] != "admin":
+    if not payload["is_superuser"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="没有管理员权限")
     return payload

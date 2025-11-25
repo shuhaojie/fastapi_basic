@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.core.utils.logger import logger
 from src.config import settings
 from src.features.auth.router import router as auth_router
+from src.features.user.router import router as user_router
 from src.core.base.exceptions import register_exception_handlers
 
 
@@ -22,6 +23,7 @@ def create_app() -> FastAPI:
     )
     # 路由注册
     _app.include_router(auth_router, prefix="/api/v1/auth", tags=["认证"])
+    _app.include_router(user_router, prefix="/api/v1/user", tags=["用户"])
     register_exception_handlers(_app)
     return _app
 

@@ -191,6 +191,36 @@ def register_exception_handlers(app: FastAPI):
 
 ### 7. Depends可以理解为装饰器吗？
 
+### 8. fastapi如何做分页？
+
+### 9. 如何使用sqlalchemy orm？
+
+注意下面这种形式就是orm
+
+```python
+    async def get_user_list(db: AsyncSession):
+        """
+        根据用户名或邮箱查找用户
+        """
+        # 先尝试按用户名查找
+        query = select(User).where(User.is_deleted == 0)
+        result = await db.execute(query)
+        users = result.scalar()
+        return users
+```
+
+这个是sqlalchemy最新的orm风格，而我熟悉的`session.query(User).filter(is_deleted==0)`这种形式，属于旧式风格。
+
+### 10. 列表页如何只返回我要的字段？
+
+### 11. 如何把数据库字段直接返回为列表
+
+### 12. get请求如何传query_params?
+
+
+
+
+
 
 
 
