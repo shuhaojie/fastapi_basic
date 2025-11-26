@@ -5,6 +5,7 @@ from jose import jwt
 from typing import Optional
 from src.core.conf.config import settings
 from src.common.utils.logger import logger
+from src.core.server.dependencies import get_redis
 
 security = HTTPBearer()
 
@@ -52,6 +53,13 @@ def get_current_user(request: Request):
 
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
+    redis_client = await get_redis()
+    if await redis_client.get(f"token_blacklist:{token}"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token已注销",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     # 在这里验证 token
     if not validate_jwt_token(token):
         raise HTTPException(

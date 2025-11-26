@@ -1,4 +1,5 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Path
+from src.features.user.schema import UserDetailOutputSchema, UserDetailData
 from src.core.server.dependencies import DbSession
 from src.core.base.schema import BaseRequestSchema, BaseResponseSchema
 from src.core.base.response import BaseResponse
@@ -75,3 +76,22 @@ async def update_user(db: DbSession,
     if not success:
         return BaseResponse.error(message=message)
     return BaseResponse.success(message="用户修改成功")
+
+
+@router.get(
+    "/detail/{id}",
+    response_model=UserDetailOutputSchema,
+    status_code=status.HTTP_200_OK,
+    summary="获取用户详情",
+    description="获取指定用户的信息（仅管理员可操作）"
+)
+async def user_detail(db: DbSession,
+                      id: int = Path(..., ge=1),
+                      user=Depends(admin_required),
+                      token=Depends(verify_token)
+                      ):
+    logger.info(f"user:{user}")
+    item = await user_service.get_user_by_id(db, id)
+    if not item:
+        return BaseResponse.not_found("用户不存在")
+    return BaseResponse.success(data=UserDetailData.from_orm(item))

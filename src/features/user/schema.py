@@ -2,6 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from typing import Optional
 from src.core.base.schema import BaseListSchema
+from src.core.base.schema import BaseSchema
 
 
 class DeleteUserSchema(BaseModel):
@@ -45,3 +46,23 @@ class UserListData(BaseModel):
 
 class UserListOutputSchema(BaseListSchema[UserListData]):
     pass
+
+
+class UserDetailData(BaseModel):
+    id: int = Field(...)
+    username: str = Field(...)
+    email: str = Field(...)
+    nickname: Optional[str] = Field(None)
+    avatar: Optional[str] = Field(None)
+    is_superuser: bool = Field(...)
+    create_time: datetime = Field(...)
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('create_time')
+    def serialize_create_time(self, create_time: datetime, _info):
+        return create_time.isoformat()
+
+
+class UserDetailOutputSchema(BaseSchema):
+    data: UserDetailData

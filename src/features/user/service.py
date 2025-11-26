@@ -66,5 +66,11 @@ class UserService:
 
         return True, ""
 
+    @staticmethod
+    async def get_user_by_id(db: DbSession, user_id: int):
+        query = select(User).where(User.is_deleted == 0, User.id == user_id)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
 
 user_service = UserService()

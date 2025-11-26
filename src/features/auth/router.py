@@ -1,11 +1,11 @@
-from fastapi import APIRouter, status
-from datetime import timedelta
-from src.core.server.dependencies import DbSession
+from fastapi import APIRouter, status, Depends
+from datetime import timedelta, datetime
+from src.core.server.dependencies import DbSession, get_redis
 from src.core.conf.config import settings
 from src.core.base.response import BaseResponse
 from src.core.base.schema import BaseResponseSchema
 from src.common.utils.logger import logger
-from src.common.utils.security import create_access_token, create_refresh_token
+from src.common.utils.security import create_access_token, create_refresh_token, validate_jwt_token, verify_token
 from src.features.user.models import User
 from src.features.auth.service import auth_service
 from src.features.auth.schema import RegisterInputSchema, EmailSchema, LoginInputSchema, LoginOutputSchema, LoginData
@@ -100,3 +100,21 @@ async def login(payload: LoginInputSchema, db: DbSession):
             is_admin=user.is_superuser
         )
     )
+
+
+@router.post(
+    "/logout",
+    response_model=BaseResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="退出登录",
+    description="注销当前登录令牌"
+)
+async def logout(token: str = Depends(verify_token)):
+    payload = validate_jwt_token(token)
+    exp = payload.get("exp")
+    now_ts = int(datetime.utcnow().timestamp())
+    ttl = exp - now_ts if exp else settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    ttl = ttl if ttl > 0 else settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    redis_client = await get_redis()
+    await redis_client.setex(f"token_blacklist:{token}", int(ttl), "1")
+    return BaseResponse.success(message="退出登录成功")
