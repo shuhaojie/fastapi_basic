@@ -6,7 +6,7 @@ from src.core.base.response import BaseResponse
 from src.core.base.schema import BaseResponseSchema
 from src.common.utils.logger import logger
 from src.common.utils.security import create_access_token, create_refresh_token
-from src.features.auth.models import User
+from src.features.user.models import User
 from src.features.auth.service import auth_service
 from src.features.auth.schema import RegisterInputSchema, EmailSchema, LoginInputSchema, LoginOutputSchema, LoginData
 from src.features.auth.utils import email_verify
@@ -58,7 +58,7 @@ async def register(payload: RegisterInputSchema, db: DbSession):
             hashed_password=User.make_password(payload.password)  # 你自己的加密方法
         )
         db.add(user)
-        await db.flush()  # 可选：立即获取 user.id
+        await db.flush()  # 可选：立即获取 user.id, 可以不需要
         # await db.commit() 不需要，begin() 上下文自动 commit
         # await db.rollback() 也不需要, 因为失败会自动回滚
     return BaseResponse.created(message="注册成功")

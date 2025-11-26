@@ -1,6 +1,32 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from typing import Optional
 from src.core.base.schema import BaseListSchema
+
+
+class DeleteUserSchema(BaseModel):
+    id: int
+
+
+class UpdateUserSchema(BaseModel):
+    """修改用户的请求模型"""
+    id: int = Field(..., description="用户ID")
+    username: Optional[str] = Field(None, min_length=3, max_length=32, description="用户名")
+    email: Optional[str] = Field(None, description="邮箱")
+    nickname: Optional[str] = Field(None, max_length=50, description="昵称")
+    avatar: Optional[str] = Field(None, description="头像URL")
+    is_superuser: Optional[bool] = Field(None, description="是否为超级管理员")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "username": "new_username",
+                "email": "new_email@example.com",
+                "nickname": "新昵称",
+                "is_superuser": False
+            }
+        }
 
 
 class UserListData(BaseModel):

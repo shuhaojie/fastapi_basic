@@ -149,7 +149,7 @@ async def send_code(email_schema: EmailSchema,
 
 
 
-- 第一个depends：确保用户需要传token
+- 第一个depends：确保用户需要登录，传token，不然就会报`login_required`里的错误信息
 - 第二个depends：swagger前端页面上，会多一个东西
 
 ![image-20251124104427050](./docs/image-20251124104427050.png)
@@ -286,18 +286,15 @@ class UserListData(BaseModel):
 
 ### 12. get请求如何传query_params?
 
+在正常请求传参数的后面加上depends，注意这里如果不加就算payload了
+
 ```python
-# 这里一定要有后面的Depends()
 async def user_list(db: DbSession,
-                    params: BaseRequestSchema = Depends(),
+                    params: BaseRequestSchema = Depends(),  # 这里一定要有后面的Depends()
                     user=Depends(admin_required),
                     token=Depends(verify_token)
                     ):
 ```
-
-
-
-
 
 
 

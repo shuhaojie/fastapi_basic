@@ -1,7 +1,7 @@
 from typing import Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from src.features.auth.models import User
+from src.features.user.models import User
 
 
 class AuthService:

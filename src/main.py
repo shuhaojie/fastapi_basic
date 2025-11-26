@@ -34,7 +34,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "main:app",  # 注意这里是字符串，不能写 app
+        "src.main:app",  # 注意这里是字符串，不能写 app
         host="0.0.0.0",
         port=settings.PORT,
         reload=not settings.DEBUG,  # 开发时开
