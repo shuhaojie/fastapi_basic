@@ -2,6 +2,7 @@ from typing import Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from src.features.user.models import User
+from src.common.utils.logger import logger
 
 
 class AuthService:
@@ -16,7 +17,8 @@ class AuthService:
 
     @staticmethod
     async def check_email_exists(db: AsyncSession, email: str) -> bool:
-        """检查用户名是否存在"""
+        """检查邮箱是否存在"""
+        logger.info(f"email: {email}")
         result = await db.execute(
             select(User).where(User.email == email)
         )
