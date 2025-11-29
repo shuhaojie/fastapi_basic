@@ -20,13 +20,14 @@ router = APIRouter()
              summary="发送注册验证码邮件",
              description="向指定邮箱发送验证码邮件，用于注册验证"
              )
+# 为什么fastapi知道email_schema是一个请求体呢?
 async def send_code(email_schema: EmailSchema, db: DbSession):
-    # 检查邮箱是否已存在
-    if not auth_service.check_email_exists(db, email_schema.email):
+    # check_email_exists是一个异步方法, 调用时前面必须加await
+    if await auth_service.check_email_exists(db, email_schema.email):
         return BaseResponse.error(message="邮箱已注册")
     # 生成验证码
     code = email_verify.generate_code()
-    logger.info(f"code:{code}")
+    logger.info(f"验证码:{code}")
     # 发送邮件
     success = await email_verify.send_email(email_schema.email, code)
     if success:
@@ -46,7 +47,7 @@ async def send_code(email_schema: EmailSchema, db: DbSession):
              )
 async def register(payload: RegisterInputSchema, db: DbSession):
     # 判断用户名是否存在
-    if not auth_service.check_username_exists(db, payload.username):
+    if await auth_service.check_username_exists(db, payload.username):
         return BaseResponse.error(message="用户已注册")
     is_valid, message = await email_verify.verify_code(payload.email, payload.code)
     if not is_valid:
