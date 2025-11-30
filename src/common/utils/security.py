@@ -36,6 +36,7 @@ def validate_jwt_token(token: str):
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
 
+# 获取当前用户的依赖
 def get_current_user(request: Request):
     auth = request.headers.get("Authorization")
     if not auth or not auth.startswith("Bearer "):
@@ -51,7 +52,7 @@ def get_current_user(request: Request):
     return payload
 
 
-async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def require_authentication(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     redis_client = await get_redis()
     if await redis_client.get(f"token_blacklist:{token}"):
