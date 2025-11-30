@@ -5,7 +5,8 @@ from src.core.conf.config import settings
 from src.core.base.response import BaseResponse
 from src.core.base.schema import BaseResponseSchema
 from src.common.utils.logger import logger
-from src.common.utils.security import create_access_token, create_refresh_token, validate_jwt_token, verify_token
+from src.common.utils.security import (create_access_token, create_refresh_token, validate_jwt_token,
+                                       require_authentication)
 from src.features.user.models import User
 from src.features.auth.service import auth_service
 from src.features.auth.schema import RegisterInputSchema, EmailSchema, LoginInputSchema, LoginOutputSchema, LoginData
@@ -53,15 +54,12 @@ async def register(payload: RegisterInputSchema, db: DbSession):
     if not is_valid:
         return BaseResponse.error(message)
     cleaned_data = payload.get_cleaned_data()
-    async with db.begin():  # 自动开启事务
-        user = User(
-            **cleaned_data,
-            hashed_password=User.make_password(payload.password)  # 你自己的加密方法
-        )
-        db.add(user)
-        await db.flush()  # 可选：立即获取 user.id, 可以不需要
-        # await db.commit() 不需要，begin() 上下文自动 commit
-        # await db.rollback() 也不需要, 因为失败会自动回滚
+    user = User(
+        **cleaned_data,
+        hashed_password=User.make_password(payload.password)  # 你自己的加密方法
+    )
+    db.add(user)
+    await db.flush()  # 可选：立即获取 user.id, 可以不需要
     return BaseResponse.created(message="注册成功")
 
 
@@ -110,10 +108,9 @@ async def login(payload: LoginInputSchema, db: DbSession):
     summary="退出登录",
     description="注销当前登录令牌"
 )
-async def logout(token: str = Depends(verify_token)):
+async def logout(token: str = Depends(require_authentication)):
     payload = validate_jwt_token(token)
-    exp = payload.get("exp")
-    now_ts = int(datetime.utcnow().timestamp())
+    exp, now_ts = payload.get("exp"), int(datetime.utcnow().timestamp())
     ttl = exp - now_ts if exp else settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     ttl = ttl if ttl > 0 else settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     redis_client = await get_redis()
