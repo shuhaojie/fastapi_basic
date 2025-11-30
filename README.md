@@ -175,6 +175,47 @@ alembic -c api/alembic.ini revision --autogenerate -m "Create user table"
 alembic -c api/alembic.ini upgrade head
 ```
 
+### 4. 数据库定义
+
+#### （1）一对多关系
+
+例如在我们的例子中，`user`表和`project`表是一对多关系，外键 `owner_id` 在"多"的一方（`project` 表）。在SQLAlchemy中，我们通过以下方式定义这种一对多关系：
+
+- 在“多”的一方（Project）中，使用外键指向“一”的一方（User）的**主键**。
+
+```python
+  class Project(BaseDBModel):
+    __tablename__ = "project"  
+  	# 使用外键指向“一”的一方（User）的主键
+    owner_id = Column(Integer, ForeignKey('user.id'), nullable=True)
+    # 这里的owned_projects名称，必须得和User里的名字完全一致!
+    owner = relationship("User", back_populates="owned_projects")
+```
+
+- 在“一”的一方（User）中，使用一个关系（relationship）来引用“多”的一方（Project）的集合。
+
+```python
+class User(BaseDBModel):
+    __tablename__ = "user"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # 这里的owner名称，必须得和Project里的名字完全一致!
+    owned_projects = relationship("Project", back_populates="owner")
+```
+
+- 关键点总结
+
+| 位置                | 写什么                                                       | 必填项               |
+| ------------------- | ------------------------------------------------------------ | -------------------- |
+| 多的一方（Project） | 普通外键列 `owner_id = mapped_column(ForeignKey("user.id"))` | 必须                 |
+| 多的一方（Project） | `owner = relationship(back_populates="owned_projects")`      | 必须（想反向访问时） |
+| 一的一方（User）    | `owned_projects = relationship(back_populates="owner", ...)` | 必须（想正向访问时） |
+| back_populates      | 两边名字必须严格对应！                                       | 写错就关联不上       |
+
+#### （2）多对多关系
+
+
+
 ## 三、异步
 
 ### 0. 类比
@@ -272,10 +313,17 @@ import asyncio
 import threading
 
 
+async def another_coroutine():
+    print("another_coroutine")
+
+
 # 1. 定义协程函数（用 async def 标记）
 async def simple_coroutine_1(name, sleep_time):
     # 2. await 挂起协程，释放事件循环（模拟耗时操作，如网络请求/数据库查询）
     print("协程内部执行了")
+    _another_coroutine = another_coroutine()
+    print("先打印这个, 再打印another_coroutine")
+    await _another_coroutine
     await asyncio.sleep(sleep_time)  # asyncio.sleep 是 Python 内置的异步等待函数
     return f"{name} 完成，等待了 {sleep_time} 秒"
 
@@ -308,12 +356,13 @@ if __name__ == "__main__":
 打印结果：
 
 ```bash
-type coroutine1:<class 'coroutine'> request id: 8384880384
+type coroutine1:<class 'coroutine'> request id: 8451301120
 协程内部执行了
+先打印这个, 再打印another_coroutine
+another_coroutine
 A 完成，等待了 2 秒
-type coroutine2:<class 'coroutine'> request id: 8384880384
+type coroutine2:<class 'coroutine'> request id: 8451301120
 协程内部执行了
-B 完成，等待了 3 秒
 ```
 
 #### （2）async
@@ -506,13 +555,71 @@ class Settings(BaseSettings):
 settings = Settings()
 ```
 
-
-
 ## 五、依赖注入
 
-### 1. 优点
+### 1.什么是依赖注入？
+
+把“公共逻辑”写成一个函数，然后让 FastAPI 自动帮你调用，**并把返回结果注入到接口参数里**（注意这句话）。
+
+``` python
+from fastapi import Depends, FastAPI
+
+app = FastAPI()
+
+def common_dep():
+    return "hello"
+
+@app.get("/items")
+def get_items(msg = Depends(common_dep)):
+    return {"msg": msg}
+```
+
+调用`/items`接口，返回`{"msg": "hello"}`
+
+> 其实很多依赖注入，完全可以写在路由函数里，没必要放到依赖注入里。
+
+### 2. 依赖注入传参
+
+可以把依赖函数写成带参数的
+
+```python
+def add(a: int, b: int):
+    return a + b
+
+@app.get("/sum")
+def sum_ab(result = Depends(lambda: add(3, 4))):
+    return result
+```
+
+### 3. 依赖可以再次依赖
+
+```python
+def dep_a():
+    return "A"
+
+def dep_b(a = Depends(dep_a)):
+    return f"B + {a}"
+
+@app.get("/test")
+def test(b = Depends(dep_b)):
+    return b
+```
+
+执行顺序，`dep_a`->`dep_b`->`test`
+
+### 4. 实际使用
+
+#### （1）数据库session
 
 在我的启动代码中，并没有在启动框架时，就去建立数据库连接，这就是依赖注入的强大。只有在实际处理HTTP请求时，才会解析路由函数中声明的依赖项（如 db: DbSession ）。这意味着在应用启动阶段， get_db() 函数不会被调用，自然也就不会建立数据库连接。
+
+#### （2）权限校验
+
+#### （3）token解析
+
+#### （4）限流和防护
+
+
 
 ## 六、权限校验
 
