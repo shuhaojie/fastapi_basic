@@ -5,7 +5,7 @@ from src.core.base.schema import BaseRequestSchema, BaseResponseSchema
 from src.core.base.response import BaseResponse
 from src.common.utils.pagination import paginate
 from src.common.utils.logger import logger
-from src.common.utils.security import verify_token, admin_required
+from src.common.utils.security import require_authentication, admin_required
 from src.features.user.service import user_service
 from src.features.user.schema import UserListOutputSchema, UserListData, DeleteUserSchema, UpdateUserSchema
 
@@ -16,14 +16,11 @@ router = APIRouter()
             response_model=UserListOutputSchema,
             status_code=status.HTTP_200_OK,
             summary="获取系统用户列表",
-            description="获取系统中所有用户的列表（仅管理员可操作）"
+            description="获取系统中所有用户的列表（仅管理员可操作）",
+            # require_authentication和admin_required都不需要拿到注入依赖的返回值，因此可以放到路由装饰器中
+            dependencies=[Depends(require_authentication), Depends(admin_required)],
             )
-async def user_list(db: DbSession,
-                    params: BaseRequestSchema = Depends(),
-                    user=Depends(admin_required),
-                    token=Depends(verify_token)
-                    ):
-    logger.info(f"user:{user}")
+async def user_list(db: DbSession, params: BaseRequestSchema = Depends()):
     query = user_service.get_user_list(params.q)
     data = await paginate(db, query, params.page_num, params.page_size)
     # 将数据库对象转为普通python格式
@@ -35,14 +32,10 @@ async def user_list(db: DbSession,
                response_model=BaseResponseSchema,
                status_code=status.HTTP_201_CREATED,
                summary="删除用户",
-               description="删除用户（仅管理员可操作）"
+               description="删除用户（仅管理员可操作）",
+               dependencies=[Depends(require_authentication), Depends(admin_required)],
                )
-async def delete_user(db: DbSession,
-                      params: DeleteUserSchema = Depends(),
-                      user=Depends(admin_required),
-                      token=Depends(verify_token)
-                      ):
-    logger.info(f"user:{user}")
+async def delete_user(db: DbSession, params: DeleteUserSchema = Depends()):
     success = await user_service.delete_user(db, params.id)
     if not success:
         return BaseResponse.error(message=f"用户ID: {params.id} 不存在或已被删除")
@@ -54,13 +47,10 @@ async def delete_user(db: DbSession,
     response_model=BaseResponseSchema,
     status_code=status.HTTP_201_CREATED,
     summary="修改用户",
-    description="修改用户信息（仅管理员可操作）"
+    description="修改用户信息（仅管理员可操作）",
+    dependencies=[Depends(require_authentication), Depends(admin_required)],
 )
-async def update_user(db: DbSession,
-                      params: UpdateUserSchema = Depends(),
-                      user=Depends(admin_required),
-                      token=Depends(verify_token)
-                      ):
+async def update_user(db: DbSession, params: UpdateUserSchema = Depends()):
     """
     修改用户信息
 
@@ -83,14 +73,10 @@ async def update_user(db: DbSession,
     response_model=UserDetailOutputSchema,
     status_code=status.HTTP_200_OK,
     summary="获取用户详情",
-    description="获取指定用户的信息（仅管理员可操作）"
+    description="获取指定用户的信息（仅管理员可操作）",
+    dependencies=[Depends(require_authentication), Depends(admin_required)],
 )
-async def user_detail(db: DbSession,
-                      id: int = Path(..., ge=1),
-                      user=Depends(admin_required),
-                      token=Depends(verify_token)
-                      ):
-    logger.info(f"user:{user}")
+async def user_detail(db: DbSession, id: int = Path(..., ge=1)):
     item = await user_service.get_user_by_id(db, id)
     if not item:
         return BaseResponse.not_found("用户不存在")
