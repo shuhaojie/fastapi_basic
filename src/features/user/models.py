@@ -1,6 +1,8 @@
 import hashlib
+from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, Boolean
 from src.core.base.models import BaseDBModel
+from src.features.project.models import project_viewers
 
 
 class User(BaseDBModel):
@@ -13,6 +15,10 @@ class User(BaseDBModel):
     nickname = Column(String(50), nullable=True)
     avatar = Column(String(255), nullable=True)
     is_superuser = Column(Boolean, default=False)
+
+    # 与Project的关系
+    owned_projects = relationship("Project", back_populates="owner")
+    viewable_projects = relationship("Project", secondary=project_viewers, back_populates="viewers")
 
     @staticmethod
     def make_password(raw_password: str) -> str:
