@@ -1,17 +1,14 @@
 import enum
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from src.core.base.models import BaseDBModel
 
 
-Base = declarative_base()
-
 # 创建多对多关系的关联表
 project_viewers = Table(
     'project_viewers',
-    Base.metadata,
+    BaseDBModel.metadata,  # 注意这里不能使用Base.metadata
     Column('project_id', Integer, ForeignKey('project.id')),
     Column('user_id', Integer, ForeignKey('user.id'))
 )
