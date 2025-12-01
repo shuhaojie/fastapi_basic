@@ -8,10 +8,17 @@ from src.features.user.schema import UpdateUserSchema
 class UserService:
 
     @staticmethod
-    def get_user_list(q: str):
+    def get_user_list(q: str = None,
+                      user_id: int = None,
+                      username: str = None,
+                      ):
         query = select(User).where(User.is_deleted == 0)
         if q:
             query = query.where(User.username.ilike(f"%{q}"))
+        if user_id:
+            query = query.where(User.id == user_id)
+        if username:
+            query = query.where(User.username == username)
         return query
 
     @staticmethod
