@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from src.features.project.models import Project
 from src.features.user.models import User
 from src.core.server.dependencies import DbSession
@@ -12,6 +13,8 @@ class ProjectService:
         query = select(Project).where(Project.is_deleted == 0)
         if q:
             query = query.where(Project.name.ilike(f"%{q}%"))
+        # 使用selectinload预加载viewers关系，避免在异步环境中访问关系时出现MissingGreenlet错误
+        query = query.options(selectinload(Project.viewers))
         return query
 
     @staticmethod
