@@ -1,6 +1,7 @@
 from sqlalchemy import Column, DateTime, Boolean, func
 from src.core.server.database import Base
 
+
 class BaseDBModel(Base):
     __abstract__ = True  # 不要单独创建表
 
