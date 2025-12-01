@@ -5,6 +5,17 @@ from src.core.base.schema import BaseListSchema
 from src.core.base.schema import BaseSchema
 
 
+class ViewerUserItemData(BaseModel):
+    id: int = Field(..., description="用户ID")
+    username: str = Field(..., description="用户名")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ViewerUserListOutputSchema(BaseListSchema[ViewerUserItemData]):
+    pass
+
+
 class DeleteUserSchema(BaseModel):
     id: int
 
@@ -19,7 +30,7 @@ class UpdateUserSchema(BaseModel):
     is_superuser: Optional[bool] = Field(None, description="是否为超级管理员")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 1,
                 "username": "new_username",
