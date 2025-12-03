@@ -23,10 +23,8 @@ async def paginate(
     total_items = (await db.execute(count_query)).scalar()
     total_pages = math.ceil(total_items / page_size) if total_items else 0
 
-    # 数据
-    items = await db.execute(
-        query.offset((page_num - 1) * page_size).limit(page_size)
-    )
+    # 这里由于执行了查询, 因此需要await
+    items = await db.execute(query.offset((page_num - 1) * page_size).limit(page_size))
     items = items.scalars().all()
     return {
         "list": items,
