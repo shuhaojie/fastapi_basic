@@ -21,6 +21,7 @@ router = APIRouter()
             dependencies=[Depends(require_authentication), Depends(admin_required)],
             )
 async def user_list(db: DbSession, params: BaseRequestSchema = Depends()):
+    # 注意: 这里由于只是构建查询语句, 并没有执行查询, 因此不需要await
     query = user_service.get_user_list(params.q)
     data = await paginate(db, query, params.page_num, params.page_size)
     # 将数据库对象转为普通python格式
