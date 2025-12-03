@@ -22,6 +22,7 @@ if config.config_file_name is not None:
 from src.core.base.models import Base
 from src.features.project.models import Project
 from src.features.user.models import User
+from src.features.doc.models import Doc
 
 target_metadata = Base.metadata
 
