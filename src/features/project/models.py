@@ -1,9 +1,9 @@
 import enum
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, Enum
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, Enum, select
+from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import func
 from src.core.base.models import BaseDBModel
-
+from src.features.doc.models import Doc
 
 # 创建多对多关系的关联表
 project_viewers = Table(
@@ -41,6 +41,13 @@ class Project(BaseDBModel):
 
     # 与Doc的关系
     doc = relationship("Doc", back_populates="project")
+
+    document_count = column_property(
+        select(func.count(Doc.id))
+        .where(Doc.project_id == id, Doc.is_deleted == 0)
+        .correlate_except(Doc)
+        .scalar_subquery()
+    )
 
     def __repr__(self):
         return f"<Project(name='{self.name}')>"

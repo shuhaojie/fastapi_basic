@@ -2,7 +2,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from typing import Optional, List
 from src.core.base.schema import BaseListSchema
-from src.core.base.schema import BaseSchema
 
 
 # 用户信息模型，用于展示在viewers列表中
@@ -17,17 +16,18 @@ class UserBriefInfo(BaseModel):
 class ProjectListData(BaseModel):
     id: int = Field(..., description="项目ID")
     name: str = Field(..., description="项目名称")
-    created_at: datetime = Field(..., description="项目创建时间")
+    create_time: datetime = Field(..., description="项目创建时间")
     project_type: int = Field(..., description="公开项目-1, 私有项目-0")
     owner_id: int = Field(..., description="项目创建人ID")
     viewers: List[UserBriefInfo] = Field(..., description="可见用户列表")
+    document_count: int = Field(..., description="文件数量")
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_serializer('created_at')
-    def serialize_created_at(self, created_at: datetime, _info):
+    @field_serializer('create_time')
+    def serialize_created_at(self, create_time: datetime, _info):
         """将 datetime 序列化为 ISO 格式字符串"""
-        return created_at.isoformat()
+        return create_time.isoformat()
 
 
 class ProjectListOutputSchema(BaseListSchema[ProjectListData]):
