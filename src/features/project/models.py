@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from src.core.base.models import BaseDBModel
@@ -14,7 +14,7 @@ project_viewers = Table(
 )
 
 
-class ProjectType(enum.Enum):
+class ProjectType(enum.IntEnum):
     PRIVATE = 0
     PUBLIC = 1
 
@@ -32,12 +32,15 @@ class Project(BaseDBModel):
     # 多对多关系：可见用户
     viewers = relationship("User", secondary=project_viewers, back_populates="viewable_projects")
 
-    project_type = Column(Integer, default=1, comment="0-私有项目, 1-公开项目")
+    project_type = Column(
+        Integer,
+        Enum(ProjectType), 
+        default=ProjectType.PUBLIC.value, 
+        comment="0-私有项目, 1-公开项目"
+        )
 
-    # 基类字段 (假设的BaseModel字段)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    is_deleted = Column(Integer, default=0, comment="逻辑删除标记")  # 根据你的BaseModel可能需要
+    # 与Doc的关系
+    doc = relationship("Doc", back_populates="project")
 
     def __repr__(self):
         return f"<Project(name='{self.name}')>"
