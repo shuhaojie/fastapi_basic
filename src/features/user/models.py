@@ -20,6 +20,9 @@ class User(BaseDBModel):
     owned_projects = relationship("Project", back_populates="owner")
     viewable_projects = relationship("Project", secondary=project_viewers, back_populates="viewers")
 
+    # 与Doc的关系
+    doc = relationship("Doc", back_populates="owner")
+
     @staticmethod
     def make_password(raw_password: str) -> str:
         # 简单示例，实际请用 bcrypt/argon2
