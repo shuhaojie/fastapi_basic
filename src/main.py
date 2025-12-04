@@ -5,6 +5,7 @@ from src.core.conf.config import settings
 from src.features.auth.router import router as auth_router
 from src.features.user.router import router as user_router
 from src.features.project.router import router as project_router
+from src.features.doc.router import router as doc_router
 from src.core.base.exceptions import register_exception_handlers
 
 
@@ -26,6 +27,7 @@ def create_app() -> FastAPI:
     _app.include_router(auth_router, prefix="/api/v1/auth", tags=["认证"])
     _app.include_router(user_router, prefix="/api/v1/user", tags=["用户"])
     _app.include_router(project_router, prefix="/api/v1/project", tags=["项目"])
+    _app.include_router(doc_router, prefix="/api/v1/doc", tags=["文件"])
     register_exception_handlers(_app)
     return _app
 
