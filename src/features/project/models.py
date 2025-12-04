@@ -1,16 +1,19 @@
 import enum
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, Enum, select
+from sqlalchemy import Column, Integer, String, ForeignKey, text, Enum, select, Table, DateTime, Boolean
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import func
 from src.core.base.models import BaseDBModel
-from src.features.doc.models import Doc
 
 # 创建多对多关系的关联表
 project_viewers = Table(
     'project_viewers',
     BaseDBModel.metadata,  # 注意这里不能使用Base.metadata
     Column('project_id', Integer, ForeignKey('project.id')),
-    Column('user_id', Integer, ForeignKey('user.id'))
+    Column('user_id', Integer, ForeignKey('user.id')),
+    Column('create_time', DateTime, default=func.now(), nullable=False),
+    Column('update_time', DateTime, default=func.now(),
+           onupdate=func.now(), nullable=False),
+    Column('is_deleted', Boolean, default=False, nullable=False)
 )
 
 
@@ -42,10 +45,11 @@ class Project(BaseDBModel):
     # 与Doc的关系
     doc = relationship("Doc", back_populates="project")
 
+    # 高级写法, 好好学习
     document_count = column_property(
-        select(func.count(Doc.id))
-        .where(Doc.project_id == id, Doc.is_deleted == 0)
-        .correlate_except(Doc)
+        select(func.count(1))
+        .select_from(text("doc"))
+        .where(text("doc.project_id = project.id"))
         .scalar_subquery()
     )
 
