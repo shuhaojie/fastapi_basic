@@ -1,6 +1,6 @@
 import enum
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, select, text
+from sqlalchemy.orm import relationship, column_property
 from src.core.base.models import BaseDBModel
 
 
@@ -31,3 +31,17 @@ class Doc(BaseDBModel):
                     Enum(DocStatus),
                     default=DocStatus.QUEUEING.value,
                     comment="文档状态：0-排队中, 1-审核中, 2-审核成功, 3-审核失败")
+
+    project_name = column_property(
+        select(text("project.name"))
+        .select_from(text("project"))
+        .where(text("doc.project_id = project.id"))
+        .scalar_subquery()
+    )
+
+    owner_name = column_property(
+        select(text("user.username"))
+        .select_from(text("user"))
+        .where(text("doc.owner_id = user.id"))
+        .scalar_subquery()
+    )
