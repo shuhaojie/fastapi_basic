@@ -8,6 +8,7 @@ from src.core.base.models import BaseDBModel
 project_viewers = Table(
     'project_viewers',
     BaseDBModel.metadata,  # 注意这里不能使用Base.metadata
+    Column('id', Integer, primary_key=True, index=True, autoincrement=True),
     Column('project_id', Integer, ForeignKey('project.id')),
     Column('user_id', Integer, ForeignKey('user.id')),
     Column('create_time', DateTime, default=func.now(), nullable=False),
