@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from pydantic import BaseModel, Field, ConfigDict, field_serializer, field_validator
 from typing import Optional, List
 from src.core.base.schema import BaseListSchema
 
@@ -38,5 +38,17 @@ class CreateProjectInputSchema(BaseModel):
     name: str = Field(..., min_length=1, max_length=32, description="项目名称")
     viewers: list[int] = Field(..., min_length=1, description="可见用户ID列表")
     project_type: int = Field(1, ge=0, le=1, description="项目类型：0-私有项目, 1-公开项目")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateProjectViewersInputSchema(BaseModel):
+    viewers: list[int] = Field(..., min_length=1, description="可见用户ID列表")
+
+    @field_validator("viewers", mode="before")
+    def validate_viewers(cls, v):
+        if not v or len(v) < 1:
+            raise ValueError("可见用户ID列表不能为空")
+        return v
 
     model_config = ConfigDict(from_attributes=True)
