@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from src.common.utils.pagination import paginate
 from src.core.base.response import BaseResponse
+from src.core.base.exceptions import MessageException
 from src.core.base.schema import BaseRequestSchema, BaseResponseSchema
 from src.common.utils.logger import logger
 from src.common.utils.security import require_authentication, login_required, get_current_user
@@ -9,6 +10,7 @@ from src.features.project.schema import ProjectListOutputSchema, ProjectListData
 from src.features.project.service import project_service
 from src.features.user.service import user_service
 from src.features.user.schema import ViewerUserListOutputSchema, ViewerUserItemData
+from src.features.project.schema import UpdateProjectViewersInputSchema
 
 router = APIRouter()
 
@@ -42,6 +44,33 @@ async def list_viewers(db: DbSession,
     data["list"] = [ViewerUserItemData.model_validate(item) for item in data["list"]]
 
     return BaseResponse.success(data=data)
+
+
+@router.put("/update/viewers/{project_id}",
+            response_model=BaseResponseSchema,
+            status_code=status.HTTP_200_OK,
+            summary="更新项目可见用户列表",
+            description="在项目原有可见人员基础上增加或移除用户（需登录）",
+            dependencies=[Depends(require_authentication), Depends(login_required)],
+            )
+async def update_project_viewers(project_id: int,
+                                 db: DbSession,
+                                 payload: UpdateProjectViewersInputSchema,
+                                 user=Depends(get_current_user)):
+    """
+    更新项目可见用户列表接口
+    """
+    # 校验项目所有者权限
+    if not await project_service.check_project_owner(db, project_id, int(user["sub"])):
+        raise MessageException(message="您无权修改此项目的可见人员")
+
+    # 执行更新
+    success = await project_service.update_project_viewers(db, project_id, viewer_ids=payload.viewers)
+
+    if success:
+        return BaseResponse.success(message="项目可见用户更新成功")
+    else:
+        return BaseResponse.error(message="项目可见用户更新失败")
 
 
 @router.post("/create",
