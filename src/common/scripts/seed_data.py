@@ -6,7 +6,7 @@ import argparse
 from sqlalchemy import delete
 from sqlalchemy.future import select
 from src.core.server.database import AsyncSessionLocal
-from src.features.user.models import User
+from src.features.user.models import User, Group, Role, user_groups, user_roles
 from src.features.project.models import Project, ProjectType, project_viewers
 from src.features.doc.models import Doc, DocStatus
 from faker import Faker
@@ -24,13 +24,19 @@ class ORMDataGenerator:
         self.users: List[User] = []
         self.projects: List[Project] = []
         self.docs: List[Doc] = []
+        self.groups: List[Group] = []
+        self.roles: List[Role] = []
 
         # 统计信息
         self.stats = {
             'users': 0,
             'projects': 0,
             'project_viewers': 0,
-            'docs': 0
+            'docs': 0,
+            'groups': 0,
+            'roles': 0,
+            'user_groups': 0,
+            'user_roles': 0
         }
 
     async def init_session(self):
@@ -110,6 +116,121 @@ class ORMDataGenerator:
 
         print(f"已生成 {len(self.users)} 个用户实例")
         return self.users
+
+    def generate_groups(self, count: int = 50) -> List[Group]:
+        """生成用户组数据"""
+        print(f"正在生成 {count} 个用户组...")
+
+        # 预定义一些常见的用户组名称
+        group_names = ['开发组', '测试组', '产品组', '设计组', '运维组',
+                      '财务组', '市场组', '销售组', '人力资源组', '管理层',
+                      '前端开发组', '后端开发组', '移动端开发组', '数据库组',
+                      '安全组', '文档组', '客服组', '运营组', '数据分析组',
+                      '算法组', '架构组', 'QA组', 'DevOps组', '项目管理组']
+
+        # 预定义一些用户组描述
+        group_descriptions = ['负责系统开发工作', '负责系统测试工作',
+                             '负责产品规划和设计', '负责UI/UX设计工作',
+                             '负责系统运维工作', '负责财务相关工作',
+                             '负责市场推广工作', '负责产品销售工作',
+                             '负责人力资源管理', '公司管理层']
+
+        used_names = set()
+        custom_group_index = 1
+
+        for i in range(count):
+            # 生成用户组名称
+            if group_names:
+                name = random.choice(group_names)
+                group_names.remove(name)
+                used_names.add(name)
+            else:
+                # 如果预定义名称用完了，生成自定义名称
+                name = f"自定义组{custom_group_index}"
+                while name in used_names:
+                    custom_group_index += 1
+                    name = f"自定义组{custom_group_index}"
+                used_names.add(name)
+                custom_group_index += 1
+
+            # 生成用户组描述
+            description = random.choice(group_descriptions) if random.random() > 0.2 else None
+
+            # 创建用户组实例
+            group = Group(
+                name=name,
+                description=description,
+                is_deleted=(i % 20 == 0),  # 每20个组有一个被删除
+                create_time=self._random_datetime(),
+                update_time=self._random_datetime()
+            )
+
+            self.groups.append(group)
+            self.stats['groups'] += 1
+
+        print(f"已生成 {len(self.groups)} 个用户组实例")
+        return self.groups
+
+    def generate_roles(self, count: int = 20) -> List[Role]:
+        """生成角色数据"""
+        print(f"正在生成 {count} 个角色...")
+
+        # 预定义一些常见的角色名称
+        role_names = ['超级管理员', '管理员', '开发人员', '测试人员', '产品经理',
+                     '设计师', '运维人员', '财务人员', '市场人员', '销售人员',
+                     '人力资源', '普通用户', '游客', '文档编辑', '文档查看',
+                     '项目管理员', '项目成员', 'QA工程师', 'DevOps工程师', '数据分析师']
+
+        # 预定义一些角色描述
+        role_descriptions = ['系统超级管理员，拥有所有权限',
+                            '系统管理员，拥有大部分管理权限',
+                            '开发人员，负责系统开发工作',
+                            '测试人员，负责系统测试工作',
+                            '产品经理，负责产品规划',
+                            '设计师，负责UI/UX设计',
+                            '运维人员，负责系统运维',
+                            '财务人员，负责财务工作',
+                            '市场人员，负责市场推广',
+                            '销售人员，负责产品销售',
+                            '人力资源，负责人事管理',
+                            '普通用户，拥有基础权限',
+                            '游客，仅能查看公开内容']
+
+        used_names = set()
+        custom_role_index = 1
+
+        for i in range(count):
+            # 生成角色名称
+            if role_names:
+                name = random.choice(role_names)
+                role_names.remove(name)
+                used_names.add(name)
+            else:
+                # 如果预定义名称用完了，生成自定义名称
+                name = f"自定义角色{custom_role_index}"
+                while name in used_names:
+                    custom_role_index += 1
+                    name = f"自定义角色{custom_role_index}"
+                used_names.add(name)
+                custom_role_index += 1
+
+            # 生成角色描述
+            description = random.choice(role_descriptions) if random.random() > 0.2 else None
+
+            # 创建角色实例
+            role = Role(
+                name=name,
+                description=description,
+                is_deleted=(i % 25 == 0),  # 每25个角色有一个被删除
+                create_time=self._random_datetime(),
+                update_time=self._random_datetime()
+            )
+
+            self.roles.append(role)
+            self.stats['roles'] += 1
+
+        print(f"已生成 {len(self.roles)} 个角色实例")
+        return self.roles
 
     def _generate_pinyin_username(self, chinese_name: str, index: int) -> str:
         """生成拼音格式的用户名，确保唯一性"""
@@ -379,6 +500,146 @@ class ORMDataGenerator:
             print(f"插入用户数据失败: {e}")
             raise
 
+    async def insert_groups_batch(self, batch_size: int = 100) -> None:
+        """批量插入用户组数据"""
+        print(f"\n正在批量插入用户组数据（每批 {batch_size} 条）...")
+
+        if not self.groups:
+            self.generate_groups()
+
+        total_groups = len(self.groups)
+
+        try:
+            for i in range(0, total_groups, batch_size):
+                batch = self.groups[i:i + batch_size]
+                self.db.add_all(batch)
+                await self.db.flush()
+                await self.db.commit()
+                print(f"已插入用户组 {i + 1} 到 {min(i + batch_size, total_groups)}")
+
+            # 重新查询以获取所有用户组的ID
+            stmt = select(Group)
+            result = await self.db.execute(stmt)
+            self.groups = result.scalars().all()
+
+            print(f"用户组数据插入完成，共 {total_groups} 条记录")
+        except Exception as e:
+            await self.db.rollback()
+            print(f"插入用户组数据失败: {e}")
+            raise
+
+    async def insert_roles_batch(self, batch_size: int = 100) -> None:
+        """批量插入角色数据"""
+        print(f"\n正在批量插入角色数据（每批 {batch_size} 条）...")
+
+        if not self.roles:
+            self.generate_roles()
+
+        total_roles = len(self.roles)
+
+        try:
+            for i in range(0, total_roles, batch_size):
+                batch = self.roles[i:i + batch_size]
+                self.db.add_all(batch)
+                await self.db.flush()
+                await self.db.commit()
+                print(f"已插入角色 {i + 1} 到 {min(i + batch_size, total_roles)}")
+
+            # 重新查询以获取所有角色的ID
+            stmt = select(Role)
+            result = await self.db.execute(stmt)
+            self.roles = result.scalars().all()
+
+            print(f"角色数据插入完成，共 {total_roles} 条记录")
+        except Exception as e:
+            await self.db.rollback()
+            print(f"插入角色数据失败: {e}")
+            raise
+
+    async def assign_user_groups(self) -> None:
+        """将用户分配到用户组"""
+        print(f"\n正在为用户分配用户组...")
+
+        if not self.users or not self.groups:
+            print("没有用户或用户组可分配")
+            return
+
+        # 为每个用户分配1-3个组
+        try:
+            # 统计关联数量
+            associations_count = 0
+            group_ids = [group.id for group in self.groups]
+            
+            # 准备所有关联数据
+            group_associations = []
+            for user in self.users:
+                # 随机选择1-3个组
+                num_groups = random.randint(1, 3)
+                assigned_group_ids = random.sample(group_ids, num_groups)
+                
+                # 创建关联记录
+                for group_id in assigned_group_ids:
+                    group_associations.append({
+                        'user_id': user.id,
+                        'group_id': group_id
+                    })
+                    associations_count += 1
+                    self.stats['user_groups'] += 1
+
+            # 批量插入关联数据
+            if group_associations:
+                await self.db.execute(
+                    user_groups.insert().values(group_associations)
+                )
+                await self.db.commit()
+                print(f"用户组分配完成，共 {associations_count} 条关联记录")
+        except Exception as e:
+            await self.db.rollback()
+            print(f"分配用户组失败: {e}")
+            raise
+
+    async def assign_user_roles(self) -> None:
+        """将角色分配给用户"""
+        print(f"\n正在为用户分配角色...")
+
+        if not self.users or not self.roles:
+            print("没有用户或角色可分配")
+            return
+
+        # 为每个用户分配1-2个角色
+        try:
+            # 统计关联数量
+            associations_count = 0
+            role_ids = [role.id for role in self.roles]
+            
+            # 准备所有关联数据
+            role_associations = []
+            for user in self.users:
+                # 随机选择1-2个角色
+                num_roles = random.randint(1, 2)
+                assigned_role_ids = random.sample(role_ids, num_roles)
+                
+                # 创建关联记录
+                for role_id in assigned_role_ids:
+                    role_associations.append({
+                        'user_id': user.id,
+                        'role_id': role_id
+                    })
+                    associations_count += 1
+                    self.stats['user_roles'] += 1
+
+            # 批量插入关联数据
+            if role_associations:
+                await self.db.execute(
+                    user_roles.insert().values(role_associations)
+                )
+                await self.db.commit()
+                print(f"角色分配完成，共 {associations_count} 条关联记录")
+        except Exception as e:
+            await self.db.rollback()
+            print(f"分配角色失败: {e}")
+            raise
+
     async def insert_projects_batch(self, batch_size: int = 100) -> None:
         """批量插入项目数据"""
         print(f"\n正在批量插入项目数据（每批 {batch_size} 条）...")
@@ -463,14 +724,23 @@ class ORMDataGenerator:
         await self.init_session()
 
         try:
+            # 清理现有的组和角色数据
+            await self.cleanup_existing_data()
+            
             # 生成所有数据
             self.generate_users(user_count)
+            self.generate_groups()
+            self.generate_roles()
             self.generate_projects(project_count)
             self.generate_docs(doc_count)
 
             # 立即插入数据库
             if insert_immediately:
                 await self.insert_users_batch()
+                await self.insert_groups_batch()
+                await self.insert_roles_batch()
+                await self.assign_user_groups()
+                await self.assign_user_roles()
                 await self.insert_projects_batch()
                 await self.assign_project_viewers()
                 await self.insert_docs_batch()
@@ -541,6 +811,23 @@ class ORMDataGenerator:
             print(f"清理数据失败: {e}")
         finally:
             await self.close()
+
+    async def cleanup_existing_data(self):
+        """清理现有的组和角色数据"""
+        print("\n正在清理现有的组和角色数据...")
+        
+        try:
+            # 按顺序删除关联和表数据（避免外键约束错误）
+            await self.db.execute(delete(user_roles))
+            await self.db.execute(delete(user_groups))
+            await self.db.execute(delete(Role))
+            await self.db.execute(delete(Group))
+            await self.db.commit()
+            print("现有组和角色数据已清理")
+        except Exception as e:
+            await self.db.rollback()
+            print(f"清理组和角色数据失败: {e}")
+            raise
 
 
 async def main_async(args):
