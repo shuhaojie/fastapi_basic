@@ -57,7 +57,6 @@ class User(BaseDBModel):
     
     # 与Role的关系 - 多对多
     roles = relationship("Role", secondary=user_roles, back_populates="users")
-    
 
     @staticmethod
     def make_password(raw_password: str) -> str:
