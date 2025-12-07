@@ -1,4 +1,5 @@
 from pathlib import Path
+from pydantic import SecretStr, Field
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -40,7 +41,11 @@ class Settings(BaseSettings):
     REDIS_DB: int = 1
 
     # 超管信息
-    SUPER_USER_LIST: list = ["haojie"]
+    SUPER_USER_LIST: list = ["admin"]
+    ADMIN_PASSWORD: SecretStr = Field(
+        default=SecretStr("Admin@123456"),
+        description="管理员密码（生产环境必须修改）"
+    )
 
     class Config:
         env_file = ".env"
