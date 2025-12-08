@@ -7,7 +7,7 @@ from src.core.base.schema import BaseResponseSchema
 from src.common.utils.logger import logger
 from src.common.utils.security import (create_access_token, create_refresh_token, validate_jwt_token,
                                        require_authentication)
-from src.features.user.models import User
+from src.features.user.models import User, user_roles
 from src.features.auth.service import auth_service
 from src.features.auth.schema import RegisterInputSchema, EmailSchema, LoginInputSchema, LoginOutputSchema, LoginData
 from src.features.auth.utils import email_verify
@@ -60,6 +60,13 @@ async def register(payload: RegisterInputSchema, db: DbSession):
     )
     db.add(user)
     await db.flush()  # 可选：立即获取 user.id, 可以不需要
+
+    user_id = user.id
+    role_id = 2 if user.username in settings.SUPER_USER_LIST else 1  # 根据用户名来判断是否为超级用户     
+    # 将用户与角色关联
+    await db.execute(user_roles.insert().values(user_id=user_id, role_id=role_id))
+    await db.commit()
+    
     return BaseResponse.created(message="注册成功")
 
 
@@ -75,12 +82,15 @@ async def login(payload: LoginInputSchema, db: DbSession):
     if not user.check_password(payload.password):
         return BaseResponse.error("密码错误")
 
+    user_role = await db.execute(user_roles.select().where(user_roles.c.user_id == user.id))
+    user_role = user_role.fetchone()
+    is_superuser = user_role.role_id == 2 if user_role else False
     # 2. 准备 token 数据
     token_data = {
         "sub": str(user.id),  # 用户ID作为主题
         "username": user.username,
         "email": user.email,
-        "is_superuser": user.is_superuser
+        "is_superuser": is_superuser
     }
 
     # 3. 生成 access_token (短期令牌)
@@ -96,7 +106,7 @@ async def login(payload: LoginInputSchema, db: DbSession):
         data=LoginData(
             refresh=refresh_token,
             access=access_token,
-            is_admin=user.is_superuser
+            is_admin=is_superuser
         )
     )
 
