@@ -65,7 +65,12 @@ def register_exception_handlers(app: FastAPI):
         errors = exc.errors()
         msg = ""
         for error in errors:
-            msg += error["msg"] + ";"
+            # 如果有原始错误对象，使用原始错误消息
+            if "ctx" in error and "error" in error["ctx"]:
+                msg += str(error["ctx"]["error"]) + ";"
+            else:
+                # 否则使用默认的错误消息
+                msg += error["msg"] + ";"
         return BaseResponse.unprocessable_entity(msg)
 
     @app.exception_handler(MessageException)
