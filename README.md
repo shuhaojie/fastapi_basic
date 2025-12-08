@@ -175,11 +175,13 @@ alembic -c api/alembic.ini revision --autogenerate -m "Create user table"
 alembic -c api/alembic.ini upgrade head
 ```
 
-### 4. 数据库定义
+## 三、数据库关系
 
-#### （1）一对多关系
+### 1. 一对多关系
 
-例如在我们的例子中，`user`表和`project`表是一对多关系，外键 `owner_id` 在"多"的一方（`project` 表）。在SQLAlchemy中，我们通过以下方式定义这种一对多关系：
+#### （1）定义
+
+例如在我们的例子中，`user`表和`project`表的`owner_id`是一对多关系，外键 `owner_id` 在"多"的一方（`project` 表）。在SQLAlchemy中，我们通过以下方式定义这种一对多关系：
 
 - 在“多”的一方（Project）中，使用外键指向“一”的一方（User）的**主键**。
 
@@ -212,69 +214,181 @@ class User(BaseDBModel):
 | 一的一方（User）    | `owned_projects = relationship(back_populates="owner", ...)` | 必须（想正向访问时） |
 | back_populates      | 两边名字必须严格对应！                                       | 写错就关联不上       |
 
-#### （2）多对多关系
+#### （2）入库
+
+以上面的例子为例，直接入库owner_id即可
+
+```python
+@staticmethod
+async def create_project(owner_id: int) -> Project:
+    users = []
+    if payload.viewers:
+        result = await db.execute(select(User).where(User.id.in_(payload.viewers)))
+        users = result.scalars().all()
+    project = Project(
+        name=payload.name,
+        project_type=payload.project_type,
+        owner_id=owner_id,
+        # viewer是一个relationship, pycharm会认为这不是一个字段而告警, 加上# type: ignore 来忽略告警
+        viewers=users  # type: ignore
+    )
+    db.add(project)
+    await db.flush()  # 获取项目ID
+    return project
+```
+
+### 2. 多对多关系
+
+#### （1）定义
+
+例如在我们的例子中，`user`表和`project`表的`viewers`是多对多关系，这里需要用到关联表
+
+- `user`表
+
+```python
+from src.features.project.models import project_viewers
+class User(BaseDBModel):
+    __tablename__ = "user"
+    viewable_projects = relationship("Project", 
+                                     secondary=project_viewers,  # 指定中间表
+                                     back_populates="viewers"  # 反向关系名
+                                    )
+```
+
+- `project`表
+
+```python
+class Project(BaseDBModel):
+    __tablename__ = "project"
+    # 多对多关系：可见用户
+    viewers = relationship("User", 
+                           secondary=project_viewers,   # 指定中间表
+                           back_populates="viewable_projects"  # 反向关系名
+                          )
+```
+
+- 新生成的关联表
+
+```python
+project_viewers = Table(
+    'project_viewers',
+    BaseDBModel.metadata,
+    Column('project_id', Integer, ForeignKey('project.id')),
+    Column('user_id', Integer, ForeignKey('user.id'))
+)
+```
+
+#### （2）入库
+
+多对多关系入库，只需要操作一端的`.append()`（或` .extend()`），SQLAlchemy 会自动往中间表插入关联记录，**永远都不用手动操作中间表**。
+
+```python
+result = await db.execute(select(User).where(User.id.in_(payload.viewers)))
+users = result.scalars().all()
+project = Project(
+    name=payload.name,
+    project_type=payload.project_type,
+    owner_id=owner_id,
+    viewers=users  # 
+)
+db.add(project)
+```
+
+### 3. 派生字段
+
+在数据库里，我们除了定义“原生”字段外，还可以定义一些派生字段，例如
+
+```python
+class Doc(BaseDBModel):
+    __tablename__ = "doc"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_name = Column(String(255), comment="文档名称", index=True)
+    file_uuid = Column(String(255), unique=True, comment="文档唯一标识")
+		
+    # 派生字段
+    project_name = column_property(
+        select(text("project.name"))
+        .select_from(text("project"))
+        .where(text("doc.project_id = project.id"))
+        .scalar_subquery()
+    )
+```
+
+这些派生字段，可以方便的让我们直接像原生字段一样，在列表页中，输出该字段。例如，在schema中定义`project_name`
+
+```python
+class DocListData(BaseModel):
+    id: int = Field(..., description="文件id")
+    file_name: str = Field(..., description="文件名称")
+    project_name: str = Field(..., description="项目名称")
+
+    model_config = ConfigDict(from_attributes=True)
 
 
+class DocListOutputSchema(BaseListSchema[DocListData]):
+    pass
+```
 
-## 三、异步
+### 4. 软删除
 
-### 0. 类比
+#### （1）一对多软删除
 
-一家餐厅，只有一个服务员（这就是我们的事件循环 event loop），但这个服务员超级能干、超级快，他绝不傻等。餐厅里有10桌客人（10个协程），每桌都点了菜：
+最好带上，因为
 
-- 炒菜（需要等锅5分钟）
-- 煮汤（需要等水开8分钟）
-- 烤饼（需要等烤箱10分钟）
+#### （2）多对多软删除
 
-如果是普通同步代码（阻塞式）：
+#### （3）关联表软删除
 
-1. 接到第1桌的炒菜 → 站在锅边傻等5分钟 → 上菜
-2. 再去第2桌煮汤 → 站在那儿傻等8分钟 → 上菜
-3. 再去第3桌烤饼 → 傻等10分钟… 
+## 四、新版orm
 
-总共要等5 + 8 + 10 = 23分钟才能服务完3桌，效率极低！
+### 1. 增
 
-如果是异步协程（async/await），就可以这样
+### 2. 删
 
-| 时间点  | 服务员在做什么                                               |
-| ------- | ------------------------------------------------------------ |
-| 0秒     | 接到1号桌订单 → 下锅炒菜 → 发现要等5分钟 → 挂起来（await）→ 立刻去干别的 |
-| 0秒     | 接到2号桌订单 → 下锅煮汤 → 要等8分钟 → 挂起来 → 继续干活     |
-| 0秒     | 接到3号桌订单 → 放进烤箱 → 要等10分钟 → 挂起来               |
-| 0~5分钟 | 服务员这段时间可以去擦桌子、收银、招呼新客人（处理其他协程或IO） |
-| 5分钟   | 1号桌锅好了！→ 事件循环通知 → 恢复执行 → 上菜                |
-| 8分钟   | 2号桌汤开了 → 事件循环通知 → 恢复执行 → 上菜                 |
-| 10分钟  | 3号桌烤箱叮一声  → 事件循环通知 → 恢复执行 → 上菜            |
+### 3. 改
 
-具体的对应关系
+### 4. 查
 
-| 真实世界              | Python 异步机制                            | 说明                 |
-| --------------------- | ------------------------------------------ | -------------------- |
-| 超级能干的服务员      | 事件循环（event loop）                     | 只有一个，但永不阻塞 |
-| 每一桌客人点的菜      | 一个 async def 协程函数                    | 任务                 |
-| “下锅后要等5分钟”     | await asyncio.sleep(5) 或 await 请求网络() | IO等待操作           |
-| await 这个等待过程    | 协程挂起，让出控制权                       | 关键！不阻塞事件循环 |
-| 锅好了/网络响应回来了 | IO完成，触发回调                           | 事件循环收到信号     |
-| 服务员回来继续上菜    | 协程恢复执行（resume）                     | 从await后面继续跑    |
+#### （1）查询列表
+
+```python
+result = await session.execute(select(User))
+users = result.scalars().all()
+```
+
+#### （2）查询单条
+
+```python
+user = await session.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+```
+
+## 五、异步
 
 ### 1. 同步VS异步
 
 - 同步I/O：当程序遇到I/O操作（如网络请求、文件读写）时，会阻塞当前线程直到操作完成。线程在等待期间什么也不做，浪费了CPU资源。
 - 异步I/O：在遇到I/O操作时**立即挂起当前任务**，将控制权交还给事件循环，事件循环可以调度其他任务执行。当I/O操作完成后，再恢复挂起的任务。当一个协程发起网络请求时，**它会`await`并释放CPU**，事件循环会去执行其他协程，而不是傻等。
 
-### 2. 核心概念
+### 2. 协程
 
-#### （1）协程
+#### （1）协程是什么？
 
 - 协程 (Coroutine)：使用 `async def` 定义的函数，**可暂停和恢复执行**
 
-#### （2）可等待对象
+### 3. 可等待对象
+
+#### （1）可等待对象是什么？
 
 可等待对象 (Awaitable)：可被 `await` 调用的对象（协程、任务、Future）
 
-#### （3）事件循环
+### 4. 事件循环
+
+#### （1）事件循环是什么？
 
 事件循环 (Event Loop)：管理和调度协程执行的引擎。
+
+#### （2）如何启动事件循环
 
 在FastAPI框架中，FastAPI 本身不直接启动事件循环：FastAPI 是一个 ASGI 框架，它不直接管理事件循环**。事件循环是由 **ASGI 服务器（如 Uvicorn、Hypercorn、Daphne）启动的。
 
@@ -403,6 +517,37 @@ type coroutine2:<class 'coroutine'> request id: 8451301120
 
 #### （1）数据库操作
 
+要说的内容比较多，后面会单起一节
+
+#### （2）外部api调用
+
+```python
+import httpx
+
+@app.get("/external-data")
+async def fetch_external_data():
+    async with httpx.AsyncClient() as client:
+        response = await client.get("https://api.example.com/data")
+        return response.json()
+```
+
+#### （3）文件操作
+
+```python
+import aiofiles
+
+@app.post("/upload")
+async def upload_file(file: UploadFile):
+    async with aiofiles.open(file.filename, "wb") as buffer:
+        while content := await file.read(1024):
+            await buffer.write(content)
+    return {"filename": file.filename}
+```
+
+## 六、异步数据库
+
+### 1. 异步定义
+
 先看一下定义数据连接的地方，比同步版本复杂了很多
 
 ```python
@@ -447,32 +592,29 @@ async def check_email_exists(db: AsyncSession, email: str) -> bool:
     return result.scalar_one_or_none() is not None
 ```
 
-#### （2）外部api调用
+#### 
+
+### 2. 何时需要await？
+
+下面这个不需要await，因为它只是在构建SQL查询语句，并没有执行查询
 
 ```python
-import httpx
-
-@app.get("/external-data")
-async def fetch_external_data():
-    async with httpx.AsyncClient() as client:
-        response = await client.get("https://api.example.com/data")
-        return response.json()
+@staticmethod
+def get_user_list(q: str = None,
+                  user_id: int = None,
+                  username: str = None,
+                  ):
+    query = select(User).where(User.is_deleted == 0)
+    if q:
+        query = query.where(User.username.ilike(f"%{q}"))
+    if user_id:
+        query = query.where(User.id == user_id)
+    if username:
+        query = query.where(User.username == username)
+    return query
 ```
 
-#### （3）文件操作
-
-```python
-import aiofiles
-
-@app.post("/upload")
-async def upload_file(file: UploadFile):
-    async with aiofiles.open(file.filename, "wb") as buffer:
-        while content := await file.read(1024):
-            await buffer.write(content)
-    return {"filename": file.filename}
-```
-
-## 四、pydantic
+## 七、pydantic
 
 在fastapi里，pydantic几乎是“灵魂伴侣”，它干的活儿远远不止“校验一下参数”那么简单。
 
@@ -555,7 +697,7 @@ class Settings(BaseSettings):
 settings = Settings()
 ```
 
-## 五、依赖注入
+## 八、依赖注入
 
 ### 1.什么是依赖注入？
 
@@ -621,7 +763,7 @@ def test(b = Depends(dep_b)):
 
 
 
-## 六、权限校验
+## 九、权限校验
 
 基本代码
 
@@ -671,27 +813,7 @@ async def send_code(email_schema: EmailSchema,
 
 点进去的时候，只需要输入access_token值即可，不需要带前面的Bearer
 
-## 七、sqlalchemy orm
-
-### 1. 如何使用？
-
-注意下面这种形式就是orm
-
-```python
-    async def get_user_list(db: AsyncSession):
-        """
-        根据用户名或邮箱查找用户
-        """
-        # 先尝试按用户名查找
-        query = select(User).where(User.is_deleted == 0)
-        result = await db.execute(query)
-        users = result.scalar()
-        return users
-```
-
-这个是sqlalchemy最新的orm风格，而我熟悉的`session.query(User).filter(is_deleted==0)`这种形式，属于旧式风格。
-
-## 八、其他问题
+## 十、其他问题
 
 ### 1. 如何保证接口按照文档返回？
 
@@ -817,80 +939,89 @@ async def user_list(db: DbSession,
 
 ### 7. fastapi如何传参逻辑
 
-## 4. 异步
+### 8. 如何做全局的异常捕获
 
-## 5. 使用日志
+代码里抛出一个异常，可以被我的全局异常给捕获，返回我想要的格式。
 
-使用之前的方案，在启动fastapi框架时，去初始化日志
-
-```python
-@app.on_event("startup")
-async def startup():
-    # 初始化日志
-    log_init()
-```
-
-定义日志的方法如下：
+- 定义异常
 
 ```python
-def log_init():
-    logger.setLevel(level=logging.INFO)
-    formatter = logging.Formatter(
-        '进程ID:%(process)d - '
-        '线程ID:%(thread)d- '
-        '日志时间:%(asctime)s - '
-        '代码路径:%(pathname)s:%(lineno)d - '
-        '日志等级:%(levelname)s - '
-        '日志信息:%(message)s'
-    )
-    logger.handlers.clear()
-    # 设置api log存储
-    api_handler = handlers.TimedRotatingFileHandler(os.path.join(log_dir, "logs/api.log"), encoding='utf-8', when='W6')
-    api_handler.setLevel(level=logging.INFO)
-    api_handler.setFormatter(formatter)
-    logger.addHandler(api_handler)
+class MessageException(Exception):
+    """自定义消息异常"""
+
+    def __init__(
+            self,
+            message: str,
+            status_code: int = status.HTTP_400_BAD_REQUEST,
+            detail: Optional[Any] = None,
+            headers: Optional[Dict[str, str]] = None
+    ):
+        """
+        初始化消息异常
+
+        Args:
+            message: 错误消息
+            status_code: HTTP状态码，默认400
+            detail: 详细错误信息
+            headers: 响应头信息
+        """
+        self.message = message
+        self.status_code = status_code
+        self.detail = detail
+        self.headers = headers
+        super().__init__(self.message)
 ```
 
-## 6. 权限认证
-
-FastAPI的权限认证没有Django封装得那么好，它的方法参考
+- 抛出异常
 
 ```python
-@router.get("/protected")
-async def protected_route(current_user: dict = Depends(get_current_user)):
-    logger.info(current_user)
-    return {"msg": f"Hello {current_user['username']}!"}
+# 校验项目所有者权限
+if not await project_service.check_project_owner(db, project_id, int(user["sub"])):
+    raise MessageException(message="您无权修改此项目的可见人员")
 ```
 
-这里`Depends`的作用：FastAPI 会**先执行** `get_current_user()` 函数，而不是直接执行 `protected_route`，如果 `get_current_user()` 成功返回用户数据（如 `{"id": 1, "username": "john"}`），这个返回值会被自动赋值给 `current_user` 参数，然后路由函数才继续执行。
-
-这里的`get_current_user`是用来校验token是否合法的
+- 捕获异常
 
 ```python
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """获取当前认证用户"""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        token_type: str = payload.get("type")
-
-        if username is None or token_type != "access":
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    # 在实际应用中，这里应该查询数据库获取用户信息
-    # 示例中简化处理
-    user = {"username": username}
-    if not user:
-        raise credentials_exception
-    return user
+def register_exception_handlers(app: FastAPI):
+    @app.exception_handler(MessageException)
+    async def message_exception_handler(request: Request, exc: MessageException):
+        return BaseResponse.error(exc.message, status_code=exc.status_code)
 ```
 
-## 7. 用户集成
+### 9. 如何接管pydantic的422报错
+
+```python
+from fastapi.exceptions import RequestValidationError
+
+def register_exception_handlers(app: FastAPI):
+    # 捕获 FastAPI 请求校验错误（Pydantic）
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        # 从 Pydantic 错误结构中提取 msg
+        errors = exc.errors()
+        msg = ""
+        for error in errors:
+            msg += error["msg"] + ";"
+        return json_response(msg, 422, 422)
+```
+
+可以在里面加上我们的自定义：
+
+```python
+class UpdateProjectViewersInputSchema(BaseModel):
+    viewers: list[int] = Field(..., min_length=1, description="可见用户ID列表")
+
+    @field_validator("viewers", mode="before")  # 必须得有这个
+    def validate_viewers(cls, v):
+        if not v or len(v) < 1:
+            raise ValueError("可见用户ID列表不能为空")
+        return v
+
+    model_config = ConfigDict(from_attributes=True)
+```
+
+### 10. 如何做数据铺底？
+
+目前的铺底数据比较粗糙（`src/common/scripts/seed_data.py`），可以做一个比较精细的版本
 
